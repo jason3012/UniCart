@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "site": "zara",
+  "product": {
+    "title": "SELVEDGE DENIM SHIRT",
+    "brand": "Zara",
+    "product_id": "7545303400",
+    "image_url": "https://static.zara.net/assets/public/57ad/25aa/8ca34a2f9d76/543bace1b1c3/07545303400-p/07545303400-p.jpg?ts=1770654683955&w=1920",
+    "price_usd": 119,
+    "color": "Blue"
+  }
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>UniCart</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="header">
+    <h1>UniCart</h1>
+    <span id="site-badge" class="site-badge">Detecting…</span>
+  </div>
+
+  <div class="action-area">
+    <button id="save-btn" class="btn btn-primary" disabled>Save item</button>
+  </div>
+
+  <div id="message" class="message"></div>
+
+  <!-- Confirm UI: required fields missing or low-confidence -->
+  <div id="confirm-ui" class="confirm-ui" hidden>
+    <h2>Confirm missing fields</h2>
+    <p>Some required fields could not be extracted. Please fill them in:</p>
+    <div id="confirm-fields"></div>
+    <div class="btn-group">
+      <button id="confirm-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="confirm-save" class="btn btn-primary" style="flex:2">Save</button>
+    </div>
+  </div>
+
+  <!-- Duplicate UI: product already in cart -->
+  <div id="duplicate-ui" class="duplicate-ui" hidden>
+    <h2>Already in cart</h2>
+    <p>This product is already saved. What would you like to do?</p>
+    <div class="btn-group">
+      <button id="dup-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="dup-new" class="btn btn-secondary">Save copy</button>
+      <button id="dup-update" class="btn btn-primary">Update</button>
+    </div>
+  </div>
+
+  <!-- Cart list -->
+  <div id="cart-section">
+    <div class="cart-header">Saved items</div>
+    <div id="cart-list"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

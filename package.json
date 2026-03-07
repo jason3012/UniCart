@@ -1,0 +1,27 @@
+{
+  "name": "unicart-extractor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "build:ext": "esbuild src/index.ts --bundle --outfile=extension/extractor.bundle.js --platform=browser --global-name=UniCart",
+    "test": "vitest run",
+    "test:unit": "vitest run testing/unit",
+    "test:fixture": "vitest run testing/fixture",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "gen-golden": "vitest run scripts/gen-golden.test.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "@typescript-eslint/eslint-plugin": "^7.9.0",
+    "@typescript-eslint/parser": "^7.9.0",
+    "esbuild": "^0.21.0",
+    "eslint": "^8.57.0",
+    "jsdom": "^24.1.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
