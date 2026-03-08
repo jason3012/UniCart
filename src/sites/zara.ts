@@ -46,6 +46,10 @@ export function extractZara(doc: Document, url: string): ProductCandidate {
   }
 
   // ── 5. DOM fallbacks for other missing fields ─────────────────────────────
+  if (!c.material) {
+    const mat = extractMaterialFromDom(doc);
+    if (mat) c.material = mat;
+  }
   if (!c.color) {
     const color = extractColorFromDom(doc);
     if (color) c.color = color;
@@ -221,6 +225,24 @@ function extractProductIdFromUrl(
 // ---------------------------------------------------------------------------
 // DOM fallbacks
 // ---------------------------------------------------------------------------
+
+function extractMaterialFromDom(
+  doc: Document
+): ProductCandidate["material"] | null {
+  // Zara's composition data lives in hidden <ul><li> elements (e.g. "100% Polyester")
+  const items = Array.from(doc.querySelectorAll("li"))
+    .filter(
+      (el) =>
+        /^\d+%\s+\w+/i.test(el.textContent?.trim() ?? "") &&
+        el.children.length === 0
+    )
+    .map((el) => el.textContent?.trim())
+    .filter((t): t is string => Boolean(t));
+  if (items.length > 0) {
+    return { value: items.join(", "), source: "dom", confidence: 0.75 };
+  }
+  return null;
+}
 
 function extractColorFromDom(doc: Document): ProductCandidate["color"] | null {
   // Zara marks the active color swatch with aria-selected or a highlight class

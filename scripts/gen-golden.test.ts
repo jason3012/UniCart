@@ -40,6 +40,7 @@ test("generate golden.json", () => {
           image_url: result.product.image_url,
           price_usd: result.product.price_usd,
           color: result.product.color,
+          material: result.product.material,
         }
       : null,
   };

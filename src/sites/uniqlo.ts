@@ -36,6 +36,10 @@ export function extractUniqlo(doc: Document, url: string): ProductCandidate {
   }
 
   // ── 3. DOM fallbacks ──────────────────────────────────────────────────────
+  if (!c.material) {
+    const mat = extractMaterialFromDom(doc);
+    if (mat) c.material = mat;
+  }
   if (!c.color) {
     const color = extractColorFromDom(doc);
     if (color) c.color = color;
@@ -217,6 +221,39 @@ function extractProductIdFromUrl(
 // ---------------------------------------------------------------------------
 // DOM fallbacks
 // ---------------------------------------------------------------------------
+
+function extractMaterialFromDom(
+  doc: Document
+): ProductCandidate["material"] | null {
+  // Uniqlo's "Materials / Care" accordion: id="productMaterialDescription-content"
+  // Content is in the DOM even when collapsed (aria-hidden but not removed).
+  const section = doc.getElementById("productMaterialDescription-content");
+  if (section) {
+    const els = Array.from(section.querySelectorAll('[data-testid="ITOTypography"]'));
+    for (let i = 0; i < els.length; i++) {
+      if (/fabric\s*details/i.test(els[i].textContent?.trim() ?? "")) {
+        const raw = els[i + 1]?.textContent?.trim();
+        if (raw) {
+          const line = raw.split(/\r?\n/).find((l) => /\d+%/.test(l))?.trim();
+          if (line) return { value: line, source: "dom", confidence: 0.8 };
+        }
+      }
+    }
+  }
+  // Fallback: percentage pattern scan
+  const items = Array.from(doc.querySelectorAll("li, p"))
+    .filter(
+      (el) =>
+        /^\d+%\s+\w+/i.test(el.textContent?.trim() ?? "") &&
+        el.children.length === 0
+    )
+    .map((el) => el.textContent?.trim())
+    .filter((t): t is string => Boolean(t));
+  if (items.length > 0) {
+    return { value: items[0], source: "dom", confidence: 0.65 };
+  }
+  return null;
+}
 
 function extractColorFromDom(doc: Document): ProductCandidate["color"] | null {
   const selectors = [

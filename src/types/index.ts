@@ -18,7 +18,8 @@ export type ProductField =
   | "sizing"
   | "color"
   | "image_url"
-  | "product_id";
+  | "product_id"
+  | "material";
 
 export interface FieldCandidate<T = string> {
   value: T;
@@ -36,6 +37,7 @@ export interface ProductCandidate {
   color?: FieldCandidate<string>;
   image_url?: FieldCandidate<string>;
   product_id?: FieldCandidate<string>;
+  material?: FieldCandidate<string>;
 }
 
 export interface RawFieldData {
@@ -52,6 +54,7 @@ export interface ProductExtracted {
   color: string | null;
   image_url: string | null;
   product_id: string | null;
+  material: string | null;
   url: string;
   field_sources: Partial<Record<ProductField, FieldSourceType>>;
   field_confidence: Partial<Record<ProductField, number>>;

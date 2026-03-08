@@ -336,6 +336,15 @@ function extractFromDom(doc: Document): ProductCandidate {
     c.image_url = { value: imgEl, source: "dom", confidence: 0.45 };
   }
 
+  // Material: scan <li> elements for percentage-based composition strings
+  const materialItems = Array.from(doc.querySelectorAll("li"))
+    .filter(el => /^\d+%\s+\w+/i.test(el.textContent?.trim() ?? "") && el.children.length === 0)
+    .map(el => el.textContent?.trim())
+    .filter((t): t is string => Boolean(t));
+  if (materialItems.length > 0) {
+    c.material = { value: materialItems.join(", "), source: "dom", confidence: 0.55 };
+  }
+
   return c;
 }
 
@@ -411,6 +420,7 @@ function mergeCandidates(layers: ProductCandidate[]): ProductCandidate {
     "color",
     "image_url",
     "product_id",
+    "material",
   ];
 
   const merged: ProductCandidate = {};
@@ -444,6 +454,7 @@ function buildProduct(
     color: c.color ? normalizeString(c.color.value) : null,
     image_url: resolveProtocol(c.image_url?.value ?? "") || null,
     product_id: c.product_id?.value?.trim() || null,
+    material: c.material ? normalizeString(c.material.value) : null,
     url,
     field_sources: {},
     field_confidence: {},
@@ -457,7 +468,7 @@ function buildProduct(
   // Populate sources + confidence
   const fields: ProductField[] = [
     "title", "brand", "price_usd", "category", "sizing",
-    "color", "image_url", "product_id",
+    "color", "image_url", "product_id", "material",
   ];
   for (const f of fields) {
     const cand = c[f as keyof ProductCandidate];
