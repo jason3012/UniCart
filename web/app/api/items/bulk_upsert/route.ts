@@ -1,17 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
+import { upsertItems } from '@/lib/localStore';
 import { NextRequest, NextResponse } from 'next/server';
 import type { UpsertPayload } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   let body: { items: UpsertPayload[] };
   try {
     body = await request.json();
@@ -21,6 +13,20 @@ export async function POST(request: NextRequest) {
 
   if (!Array.isArray(body.items) || body.items.length === 0) {
     return NextResponse.json({ error: 'items must be a non-empty array' }, { status: 400 });
+  }
+
+  if (process.env.LOCAL_DEV === 'true') {
+    const items = await upsertItems(body.items);
+    return NextResponse.json({ items, count: items.length });
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const rows = body.items.map((item) => ({

@@ -4,12 +4,19 @@ import Link from 'next/link';
 import SignOutButton from './SignOutButton';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const isLocalDev = process.env.LOCAL_DEV === 'true';
 
-  if (!user) redirect('/login');
+  let userEmail: string | null = null;
+
+  if (!isLocalDev) {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) redirect('/login');
+    userEmail = user.email ?? null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -19,8 +26,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             UniCart
           </Link>
           <div className="flex items-center gap-4 text-sm text-gray-500">
-            <span className="hidden sm:block">{user.email}</span>
-            <SignOutButton />
+            {isLocalDev ? (
+              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">
+                Local dev
+              </span>
+            ) : (
+              <>
+                <span className="hidden sm:block">{userEmail}</span>
+                <SignOutButton />
+              </>
+            )}
           </div>
         </div>
       </header>

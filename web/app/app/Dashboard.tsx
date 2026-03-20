@@ -59,6 +59,20 @@ export default function Dashboard({ initialItems }: { initialItems: Item[] }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<SortKey>('newest');
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function refreshItems() {
+    setRefreshing(true);
+    try {
+      const res = await fetch('/api/items');
+      if (res.ok) {
+        const { items: fresh } = await res.json();
+        setItems(fresh);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const displayed = useMemo(
     () => applySort(applyFilters(items, filters), sort),
@@ -96,7 +110,17 @@ export default function Dashboard({ initialItems }: { initialItems: Item[] }) {
             {displayed.length} item{displayed.length !== 1 ? 's' : ''}
           </span>
         </h1>
-        <SortSelect value={sort} onChange={setSort} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refreshItems}
+            disabled={refreshing}
+            title="Refresh items"
+            className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-40"
+          >
+            <span className={refreshing ? 'inline-block animate-spin' : ''}>↻</span>
+          </button>
+          <SortSelect value={sort} onChange={setSort} />
+        </div>
       </div>
 
       <div className="flex gap-6">

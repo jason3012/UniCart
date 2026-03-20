@@ -1,7 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
+import { listItems } from '@/lib/localStore';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
+  if (process.env.LOCAL_DEV === 'true') {
+    const items = await listItems();
+    return NextResponse.json({ items });
+  }
+
   const supabase = createClient();
   const {
     data: { user },

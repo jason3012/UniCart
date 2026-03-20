@@ -1,17 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
+import { upsertItem } from '@/lib/localStore';
 import { NextRequest, NextResponse } from 'next/server';
 import type { UpsertPayload } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   let body: UpsertPayload;
   try {
     body = await request.json();
@@ -24,6 +16,20 @@ export async function POST(request: NextRequest) {
     if (!body[field as keyof UpsertPayload]) {
       return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
     }
+  }
+
+  if (process.env.LOCAL_DEV === 'true') {
+    const item = await upsertItem(body);
+    return NextResponse.json({ item });
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { data, error } = await supabase

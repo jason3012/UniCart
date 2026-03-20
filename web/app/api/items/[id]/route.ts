@@ -1,10 +1,16 @@
 import { createClient } from '@/lib/supabase/server';
+import { deleteItem } from '@/lib/localStore';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  if (process.env.LOCAL_DEV === 'true') {
+    await deleteItem(params.id);
+    return NextResponse.json({ status: 'deleted' });
+  }
+
   const supabase = createClient();
   const {
     data: { user },
@@ -18,7 +24,7 @@ export async function DELETE(
     .from('items')
     .delete()
     .eq('id', params.id)
-    .eq('user_id', user.id); // RLS also enforces this, but explicit is better
+    .eq('user_id', user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

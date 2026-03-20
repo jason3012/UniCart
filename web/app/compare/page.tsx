@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { listItems } from '@/lib/localStore';
 import { redirect } from 'next/navigation';
 import type { Item } from '@/lib/types';
 import Link from 'next/link';
@@ -46,13 +47,23 @@ export default async function ComparePage({
     );
   }
 
-  const supabase = createClient();
-  const { data: items, error } = await supabase
-    .from('items')
-    .select('*')
-    .in('id', ids);
+  let items: Item[];
 
-  if (error || !items || items.length < 2) {
+  if (process.env.LOCAL_DEV === 'true') {
+    const all = await listItems();
+    items = all.filter((i) => ids.includes(i.id));
+  } else {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('items')
+      .select('*')
+      .in('id', ids);
+
+    if (error || !data) redirect('/app');
+    items = data as Item[];
+  }
+
+  if (items.length < 2) {
     redirect('/app');
   }
 
