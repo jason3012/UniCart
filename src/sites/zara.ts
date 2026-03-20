@@ -11,7 +11,6 @@
 import type { ProductCandidate } from "../types/index.js";
 import { isCurrencyUSD } from "../core/normalize/price.js";
 import { normalizeString, isValidTitle, isValidImageUrl } from "../core/normalize/text.js";
-import { normalizeCategory } from "../core/normalize/category.js";
 
 export function extractZara(doc: Document, url: string): ProductCandidate {
   const c: ProductCandidate = {};
@@ -152,7 +151,7 @@ function buildFromZaraNextData(
     safeGet<string>(pageProps, "canonicalData.category");
   if (seoCategory) {
     c.category = {
-      value: normalizeCategory(seoCategory),
+      value: seoCategory,
       source: "site_json",
       confidence: 0.85,
     };
@@ -277,7 +276,7 @@ function extractCategoryFromDom(
 
   if (items.length > 0) {
     return {
-      value: normalizeCategory(items.join(" > ")),
+      value: items.join(" > "),
       source: "dom",
       confidence: 0.6,
     };

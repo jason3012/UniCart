@@ -1,6 +1,8 @@
 'use strict';
 
-// Message router
+const WEB_APP_URL = 'https://unicart.vercel.app';
+
+// Internal message router (from popup / content scripts)
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   const handler = HANDLERS[msg.type];
   if (handler) {
@@ -13,6 +15,70 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true; // keep channel open for async response
   }
 });
+
+// External message router (from the UniCart web app — auth relay)
+chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'AUTH_SESSION') {
+    const { access_token, refresh_token, user_email } = msg;
+    if (!access_token) {
+      sendResponse({ status: 'error', error: 'No access_token' });
+      return true;
+    }
+    chrome.storage.local.set({ auth: { access_token, refresh_token, user_email } })
+      .then(() => {
+        console.log('[UniCart] Auth session saved for', user_email);
+        // Sync local items to the server now that we have a session
+        syncToServer(access_token).catch(console.error);
+        sendResponse({ status: 'ok' });
+      });
+    return true;
+  }
+});
+
+// ── Supabase sync helpers ───────────────────────────────────────────────────
+async function syncToServer(accessToken) {
+  const { items = [] } = await chrome.storage.local.get('items');
+  if (items.length === 0) return;
+
+  console.log('[UniCart] Syncing', items.length, 'item(s) to server…');
+  const res = await fetch(`${WEB_APP_URL}/api/items/bulk_upsert`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ items }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    console.error('[UniCart] Sync failed:', body);
+  } else {
+    const body = await res.json();
+    console.log('[UniCart] Sync complete:', body.count, 'item(s) upserted');
+  }
+}
+
+async function saveToServer(item) {
+  const { auth } = await chrome.storage.local.get('auth');
+  if (!auth?.access_token) return; // not signed in, skip
+
+  await fetch(`${WEB_APP_URL}/api/items/upsert`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${auth.access_token}`,
+    },
+    body: JSON.stringify(item),
+  }).catch((err) => console.warn('[UniCart] Server upsert failed:', err));
+}
+
+async function deleteFromServer(item) {
+  // We don't store the server UUID locally, so use brand+product_id lookup via upsert table
+  // The server will handle dedup — nothing to do on delete unless we cache the server ID.
+  // For now, deletions only affect local storage; server items persist until next full sync.
+  void item;
+}
 
 const HANDLERS = {
   GET_CART: async () => {
@@ -73,6 +139,7 @@ const HANDLERS = {
     // Save
     const item = buildItem(product);
     await chrome.storage.local.set({ items: [...items, item] });
+    saveToServer(item).catch(console.error);
     return { status: 'saved', item };
   },
 
@@ -81,6 +148,7 @@ const HANDLERS = {
     const { items = [] } = await chrome.storage.local.get('items');
     const item = buildItem(product, overrides);
     await chrome.storage.local.set({ items: [...items, item] });
+    saveToServer(item).catch(console.error);
     return { status: 'saved', item };
   },
 
@@ -99,6 +167,7 @@ const HANDLERS = {
       extracted_at: now,
     };
     await chrome.storage.local.set({ items });
+    saveToServer(items[idx]).catch(console.error);
     return { status: 'saved', item: items[idx] };
   },
 
@@ -107,6 +176,7 @@ const HANDLERS = {
     const { items = [] } = await chrome.storage.local.get('items');
     const item = buildItem(product);
     await chrome.storage.local.set({ items: [...items, item] });
+    saveToServer(item).catch(console.error);
     return { status: 'saved', item };
   },
 

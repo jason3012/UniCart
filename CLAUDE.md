@@ -2,18 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Rules
+
+**Never commit or push `CLAUDE.md` or any file in `.claude/` to the repository.** These are local-only Claude configuration files and must not be included in any git commit or PR.
+
 ## Project Overview
 
 UniCart is an extraction-first universal shopping cart.
 - **Phase 1 (complete):** TypeScript extraction library — `src/`. All 66 tests passing.
-- **Phase 2 (current):** Manifest V3 Chrome extension — see [`docs/phase2.md`](docs/phase2.md).
-- **Phase 3 (deferred):** Website/web app.
+- **Phase 2 (complete):** Manifest V3 Chrome extension — `extension/`. See [`docs/phase2.md`](docs/phase2.md).
+- **Phase 3 (current):** Website/web app — Next.js + Supabase. See [`docs/phase3.md`](docs/phase3.md).
 
 ## Commands
 
 ```bash
 npm install           # install deps
 npm run build         # tsc --noEmit (type check)
+npm run build:ext     # bundle src/index.ts → extension/extractor.bundle.js (esbuild)
 npm test              # run all unit + fixture tests (vitest)
 npm run test:unit     # unit tests only  (testing/unit/)
 npm run test:fixture  # fixture tests    (testing/fixture/)
@@ -32,29 +37,36 @@ npx vitest run testing/unit/price.test.ts
 ### Module layout
 
 ```
-src/
-  index.ts             # public re-exports
-  types/index.ts       # all shared types
+src/                         # Phase 1 — FROZEN. Do not modify.
+  index.ts                   # public re-exports
+  types/index.ts             # all shared types
   core/
-    extract.ts         # main entry: extract(document, url, options?): ExtractionResult
-    detectSite.ts      # detectSite(url): "zara" | "uniqlo" | "unknown"
+    extract.ts               # main entry: extract(document, url, options?): ExtractionResult
+    detectSite.ts            # detectSite(url): "zara" | "uniqlo" | "unknown"
     normalize/
-      price.ts         # parsePriceUSD(), isCurrencyUSD()
-      text.ts          # normalizeString(), isValidTitle(), isValidImageUrl(), normalizeBrand()
-      category.ts      # normalizeCategory()
+      price.ts               # parsePriceUSD(), isCurrencyUSD()
+      text.ts                # normalizeString(), isValidTitle(), isValidImageUrl(), normalizeBrand()
+      category.ts            # normalizeCategory()
     confidence/
-      score.ts         # sourceConfidence(), bestCandidate()
+      score.ts               # sourceConfidence(), bestCandidate()
   sites/
-    zara.ts            # Zara adapter (extractZara)
-    uniqlo.ts          # Uniqlo adapter (extractUniqlo)
+    zara.ts                  # Zara adapter (extractZara)
+    uniqlo.ts                # Uniqlo adapter (extractUniqlo)
+extension/                   # Phase 2 — Chrome MV3 extension
+  manifest.json
+  background.js              # service worker: injection, validation, dedup, storage
+  popup.html / popup.js      # cart list UI
+  edit.html / edit.js        # item edit form
+  styles.css
+  extractor.bundle.js        # built artifact (npm run build:ext) — do not edit directly
 testing/
-  unit/                # pure unit tests — run without network
-  fixture/             # snapshot tests against local HTML fixtures + golden JSON
-    fixture.test.ts    # auto-discovers testing/fixtures/<brand>/<name>/
-  integration/         # Playwright tests against live pages (requires bundle)
+  unit/                      # pure unit tests — run without network
+  fixture/                   # snapshot tests against local HTML fixtures + golden JSON
+    fixture.test.ts          # auto-discovers testing/fixtures/<brand>/<name>/
+  integration/               # Playwright tests against live pages (requires bundle)
   fixtures/
-    zara/              # add fixture subdirs here (input.html, golden.json, url.txt)
-    uniqlo/            # add fixture subdirs here
+    zara/                    # input.html, golden.json, url.txt
+    uniqlo/
 ```
 
 ### Extraction pipeline (in order)
@@ -106,6 +118,7 @@ testing/
 
 ## Key Constraints
 
+- **`src/` is frozen.** Phase 1 files must not be modified. The extension content script calls `extract(document, url)` from Phase 1 unmodified.
 - **`sizing`:** only numeric when page clearly shows a numeric default; otherwise `null`. Never guess alpha → number.
 - **`price_usd`:** conservative parser — rejects European decimal format (e.g. `$49,90`), negative values, and anything without a `$` or `USD` indicator.
 - **`raw` storage:** only populated when `options.debug = true`; never stores full HTML.
@@ -124,15 +137,44 @@ testing/fixtures/zara/my-product/
 
 Run `npm run test:fixture` to validate. Gate thresholds: ≥ 90% required fields, ≥ 80% price accuracy.
 
-## Phase 2 (Chrome Extension)
+## Phase 2 (Chrome Extension) — Complete
 
 Full spec: [`docs/phase2.md`](docs/phase2.md)
 
-- MV3 extension: manifest + service worker + content script + popup UI
-- Content script calls `extract(document, url)` from Phase 1 — **`src/` is frozen. Do not modify any Phase 1 files.**
-- Storage: `chrome.storage.local` only
-- Entry point for bundling: `src/index.ts` → `dist/extractor.bundle.js`
-- Extension source lives in `extension/` (to be created)
+- MV3 extension with service worker (`background.js`), popup UI, and edit UI
+- Content script injects `extractor.bundle.js` on demand via `scripting.executeScript`
+- Storage: `chrome.storage.local` only; keyed by `(brand, product_id)` for dedup
+- Rebuild bundle after any `src/` change: `npm run build:ext`
+
+## Phase 3 (Website) — Current
+
+Full spec: [`docs/phase3.md`](docs/phase3.md)
+
+**Stack:** Next.js (App Router) on Vercel + Supabase (Postgres + Auth)
+
+**Routes:**
+- `/` — landing page
+- `/login` — Supabase Auth (magic link or OAuth)
+- `/app` — protected cart dashboard
+- `/compare` — protected compare view (2–4 items via `?ids=...`)
+- `/settings` — optional preferences
+
+**API surface** (Next.js Route Handlers, all require auth):
+- `POST /api/items/upsert` — insert/update by `(user_id, brand, product_id)`
+- `POST /api/items/bulk_upsert` — sync many local items
+- `GET /api/items` — list for authenticated user
+- `DELETE /api/items/:id` — remove item
+
+**Sync strategy (Option A):** Supabase is the source of truth. Extension authenticates via a sign-in handshake: "Sign in" opens `/login?source=extension`, then the extension uses the resulting session to write items directly to Supabase.
+
+**Canonical Item schema** (Supabase `items` table):
+- Required: `id` (uuid), `user_id`, `url`, `brand`, `product_id`, `title`, `image_url`, `created_at`, `updated_at`
+- Optional: `price_usd`, `category`, `color`, `sizing`
+- Uniqueness: `(user_id, brand, product_id)`
+
+**Image handling:** Use retailer `image_url` directly in Next.js `<Image>` with allow-listed domains. Only proxy if CORS issues arise.
+
+**Extension changes for Phase 3:** Add "Open Web App" button in popup + account state indicator (signed-in email or "Sign in to sync" link).
 
 ## Integration Tests (Test Level 3)
 

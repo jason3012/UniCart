@@ -17,7 +17,7 @@ import {
   normalizeBrand,
   brandFromSite,
 } from "./normalize/text.js";
-import { normalizeCategory } from "./normalize/category.js";
+import { normalizeProductType } from "./normalize/category.js";
 import { extractZara } from "../sites/zara.js";
 import { extractUniqlo } from "../sites/uniqlo.js";
 
@@ -219,7 +219,7 @@ function buildFromProductSchema(
   const cat = asString(schema.category);
   if (cat) {
     c.category = {
-      value: normalizeCategory(cat),
+      value: cat,
       source: "jsonld",
       confidence: 0.85,
     };
@@ -324,7 +324,7 @@ function extractFromDom(doc: Document): ProductCandidate {
   const breadcrumb = findBreadcrumb(root, doc);
   if (breadcrumb) {
     c.category = {
-      value: normalizeCategory(breadcrumb),
+      value: breadcrumb,
       source: "dom",
       confidence: 0.5,
     };
@@ -449,7 +449,7 @@ function buildProduct(
     title: c.title ? normalizeString(c.title.value) : null,
     brand: c.brand?.value ?? null,
     price_usd: c.price_usd?.value ?? null,
-    category: c.category ? normalizeCategory(c.category.value) : null,
+    category: normalizeProductType(c.title?.value ?? null, c.category?.value ?? null),
     sizing: c.sizing?.value ?? null,
     color: c.color ? normalizeString(c.color.value) : null,
     image_url: resolveProtocol(c.image_url?.value ?? "") || null,

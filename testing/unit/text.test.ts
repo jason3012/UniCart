@@ -5,7 +5,7 @@ import {
   isValidImageUrl,
   normalizeBrand,
 } from "../../src/core/normalize/text.js";
-import { normalizeCategory } from "../../src/core/normalize/category.js";
+import { normalizeProductType } from "../../src/core/normalize/category.js";
 
 describe("normalizeString", () => {
   it("collapses multiple spaces", () => {
@@ -76,23 +76,35 @@ describe("normalizeBrand", () => {
   it("returns null for empty string", () => expect(normalizeBrand("")).toBeNull());
 });
 
-describe("normalizeCategory", () => {
-  it("passes through simple category", () => {
-    expect(normalizeCategory("Jeans")).toBe("Jeans");
+describe("normalizeProductType", () => {
+  it("matches jacket from title", () => {
+    expect(normalizeProductType("Boxy Fit Cotton Jacket", null)).toBe("Jacket");
   });
-  it("splits on slash", () => {
-    expect(normalizeCategory("Women/Jeans")).toBe("Women > Jeans");
+  it("matches polo before shirt", () => {
+    expect(normalizeProductType("Soft Knit Polo Shirt", null)).toBe("Polo");
   });
-  it("splits on >", () => {
-    expect(normalizeCategory("Women > Jeans")).toBe("Women > Jeans");
+  it("matches t-shirt before shirt", () => {
+    expect(normalizeProductType("Classic T-Shirt", null)).toBe("T-Shirt");
   });
-  it("splits on pipe", () => {
-    expect(normalizeCategory("Women | Jeans")).toBe("Women > Jeans");
+  it("matches shirt over denim when shirt appears in title", () => {
+    expect(normalizeProductType("Selvedge Denim Shirt", null)).toBe("Shirt");
   });
-  it("trims extra whitespace", () => {
-    expect(normalizeCategory("  Women  >  Jeans  ")).toBe("Women > Jeans");
+  it("matches pants from chino keyword", () => {
+    expect(normalizeProductType("Pleated Baggy Fit Chino Pants", null)).toBe("Pants");
   });
-  it("filters empty segments", () => {
-    expect(normalizeCategory("Women//Jeans")).toBe("Women > Jeans");
+  it("matches bag from shopper keyword", () => {
+    expect(normalizeProductType("Leather Detail Shopper Bag", null)).toBe("Bag");
+  });
+  it("matches coat from title", () => {
+    expect(normalizeProductType("BLOCKTECH Coat", null)).toBe("Coat");
+  });
+  it("falls back to rawCategory when title has no match", () => {
+    expect(normalizeProductType("Essential Item", "Women > Jackets")).toBe("Jacket");
+  });
+  it("returns null when nothing matches", () => {
+    expect(normalizeProductType("Gift Card", null)).toBeNull();
+  });
+  it("is case-insensitive", () => {
+    expect(normalizeProductType("SLIM FIT JEANS", null)).toBe("Jeans");
   });
 });

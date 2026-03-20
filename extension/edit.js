@@ -58,8 +58,8 @@ saveBtn.addEventListener('click', async () => {
   const color = colorInput.value.trim();
   if (color) overrides.color = color;
 
-  const sizing = parseFloat(sizingInput.value);
-  if (!isNaN(sizing) && sizing > 0) overrides.sizing = sizing;
+  const sizing = sizingInput.value.trim();
+  if (sizing) overrides.sizing = sizing;
 
   const res = await chrome.runtime.sendMessage({
     type: 'UPDATE_ITEM',

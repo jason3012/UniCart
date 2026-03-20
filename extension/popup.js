@@ -23,6 +23,10 @@ const dupCancel = document.getElementById('dup-cancel');
 const dupNew = document.getElementById('dup-new');
 const dupUpdate = document.getElementById('dup-update');
 const cartList = document.getElementById('cart-list');
+const accountLabel = document.getElementById('account-label');
+const webappLink = document.getElementById('webapp-link');
+
+const WEB_APP_URL = 'https://unicart.vercel.app';
 
 // ── Init ───────────────────────────────────────────────────────────────────
 (async () => {
@@ -30,11 +34,31 @@ const cartList = document.getElementById('cart-list');
   state.tab = tab;
   state.site = detectSite(tab?.url);
   renderSiteStatus();
+  renderAccountBar();
 
   const res = await chrome.runtime.sendMessage({ type: 'GET_CART' });
   state.items = res.items || [];
   renderCart();
 })();
+
+// ── Account bar ────────────────────────────────────────────────────────────
+async function renderAccountBar() {
+  const { auth } = await chrome.storage.local.get('auth');
+  webappLink.href = WEB_APP_URL + '/app';
+
+  if (auth?.user_email) {
+    accountLabel.textContent = auth.user_email;
+    accountLabel.className = 'account-label signed-in';
+  } else {
+    accountLabel.textContent = 'Sign in to sync';
+    accountLabel.className = 'account-label signed-out';
+    accountLabel.style.cursor = 'pointer';
+    accountLabel.addEventListener('click', () => {
+      const loginUrl = `${WEB_APP_URL}/login?source=extension&ext_id=${chrome.runtime.id}`;
+      chrome.tabs.create({ url: loginUrl });
+    });
+  }
+}
 
 // ── Site detection (hostname-based) ────────────────────────────────────────
 function detectSite(url) {

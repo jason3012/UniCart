@@ -33,7 +33,7 @@ export interface ProductCandidate {
   brand?: FieldCandidate<Brand>;
   price_usd?: FieldCandidate<number>;
   category?: FieldCandidate<string>;
-  sizing?: FieldCandidate<number>;
+  sizing?: FieldCandidate<string>;
   color?: FieldCandidate<string>;
   image_url?: FieldCandidate<string>;
   product_id?: FieldCandidate<string>;
@@ -50,7 +50,7 @@ export interface ProductExtracted {
   brand: Brand | null;
   price_usd: number | null;
   category: string | null;
-  sizing: number | null;
+  sizing: string | null;
   color: string | null;
   image_url: string | null;
   product_id: string | null;

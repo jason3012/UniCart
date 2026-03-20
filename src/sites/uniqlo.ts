@@ -18,7 +18,6 @@ import {
   isValidTitle,
   isValidImageUrl,
 } from "../core/normalize/text.js";
-import { normalizeCategory } from "../core/normalize/category.js";
 
 export function extractUniqlo(doc: Document, url: string): ProductCandidate {
   const c: ProductCandidate = {};
@@ -150,7 +149,7 @@ function buildFromUniqloNextData(
     );
   if (category) {
     c.category = {
-      value: normalizeCategory(category),
+      value: category,
       source: "site_json",
       confidence: 0.85,
     };
@@ -286,7 +285,7 @@ function extractCategoryFromDom(
 
   if (items.length > 0) {
     return {
-      value: normalizeCategory(items.join(" > ")),
+      value: items.join(" > "),
       source: "dom",
       confidence: 0.6,
     };

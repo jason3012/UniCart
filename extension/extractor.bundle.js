@@ -111,8 +111,48 @@ var UniCart = (() => {
   }
 
   // src/core/normalize/category.ts
-  function normalizeCategory(raw) {
-    return raw.replace(/\s+/g, " ").trim().split(/[>\/\|]/).map((s) => s.trim()).filter(Boolean).join(" > ");
+  var PRODUCT_TYPES = [
+    { label: "T-Shirt", pattern: /t[\s-]shirt|tshirt|\btee\b|graphic\s*tee/i },
+    { label: "Tank Top", pattern: /tank\s*top|camisole|\bcami\b|halter\s*top|sleeveless\s*top/i },
+    { label: "Polo", pattern: /\bpolo\b/i },
+    { label: "Hoodie", pattern: /hoodie|hooded\s*sweatshirt/i },
+    { label: "Sweatshirt", pattern: /sweatshirt|crewneck|crew[\s-]neck/i },
+    { label: "Cardigan", pattern: /cardigan/i },
+    { label: "Sweater", pattern: /sweater|pullover|\bknitwear\b|\bjumper\b/i },
+    { label: "Blouse", pattern: /blouse/i },
+    { label: "Shirt", pattern: /\bshirt\b/i },
+    { label: "Top", pattern: /\btop\b/i },
+    { label: "Coat", pattern: /\bcoat\b|parka|trench|overcoat/i },
+    { label: "Blazer", pattern: /blazer/i },
+    { label: "Jacket", pattern: /jacket|bomber|windbreaker|anorak|puffer/i },
+    { label: "Vest", pattern: /\bvest\b|gilet|waistcoat/i },
+    { label: "Jeans", pattern: /\bjeans\b|\bdenim\b/i },
+    { label: "Leggings", pattern: /leggings|\btights\b/i },
+    { label: "Shorts", pattern: /\bshorts\b/i },
+    { label: "Pants", pattern: /\bpants\b|trousers|chinos?|slacks|joggers/i },
+    { label: "Skirt", pattern: /\bskirts?\b/i },
+    { label: "Dress", pattern: /\bdress\b|\bgown\b|sundress/i },
+    { label: "Jumpsuit", pattern: /jumpsuit|romper|playsuit|overalls/i },
+    { label: "Bag", pattern: /\bbag\b|\btote\b|backpack|purse|handbag|clutch|satchel|pouch|shopper/i },
+    { label: "Sneakers", pattern: /sneakers?|trainers?/i },
+    { label: "Boots", pattern: /\bboots?\b/i },
+    { label: "Sandals", pattern: /sandals?|flip[\s-]flops?|\bslides\b/i },
+    { label: "Shoes", pattern: /\bshoes?\b|loafers?|\bheels?\b|\bpumps?\b|\bmules?\b|oxfords?/i },
+    { label: "Hat", pattern: /\bhats?\b|\bcaps?\b|beanie|beret/i },
+    { label: "Scarf", pattern: /scarfs?|scarves|\bwrap\b|\bshawl\b/i },
+    { label: "Belt", pattern: /\bbelts?\b/i },
+    { label: "Socks", pattern: /\bsocks?\b|hosiery/i },
+    { label: "Swimwear", pattern: /swimsuit|bikini|swimwear|bathing\s*suit/i },
+    { label: "Underwear", pattern: /underwear|boxers?|\bbriefs?\b|\bbras?\b|lingerie/i }
+  ];
+  function normalizeProductType(title, rawCategory) {
+    for (const text of [title, rawCategory]) {
+      if (!text) continue;
+      for (const { label, pattern } of PRODUCT_TYPES) {
+        if (pattern.test(text)) return label;
+      }
+    }
+    return null;
   }
 
   // src/sites/zara.ts
@@ -132,6 +172,10 @@ var UniCart = (() => {
     if (!c.product_id) {
       const urlPid = extractProductIdFromUrl(url);
       if (urlPid) c.product_id = urlPid;
+    }
+    if (!c.material) {
+      const mat = extractMaterialFromDom(doc);
+      if (mat) c.material = mat;
     }
     if (!c.color) {
       const color = extractColorFromDom(doc);
@@ -202,7 +246,7 @@ var UniCart = (() => {
     const seoCategory = safeGet(pageProps, "seoData.category") ?? safeGet(pageProps, "canonicalData.category");
     if (seoCategory) {
       c.category = {
-        value: normalizeCategory(seoCategory),
+        value: seoCategory,
         source: "site_json",
         confidence: 0.85
       };
@@ -245,6 +289,15 @@ var UniCart = (() => {
     }
     return null;
   }
+  function extractMaterialFromDom(doc) {
+    const items = Array.from(doc.querySelectorAll("li")).filter(
+      (el) => /^\d+%\s+\w+/i.test(el.textContent?.trim() ?? "") && el.children.length === 0
+    ).map((el) => el.textContent?.trim()).filter((t) => Boolean(t));
+    if (items.length > 0) {
+      return { value: items.join(", "), source: "dom", confidence: 0.75 };
+    }
+    return null;
+  }
   function extractColorFromDom(doc) {
     const selectors = [
       "[data-qa-label*='color-name']",
@@ -267,7 +320,7 @@ var UniCart = (() => {
     const items = Array.from(nav.querySelectorAll("a, li, span")).map((el) => el.textContent?.trim()).filter((t) => Boolean(t) && !/^home$/i.test(t));
     if (items.length > 0) {
       return {
-        value: normalizeCategory(items.join(" > ")),
+        value: items.join(" > "),
         source: "dom",
         confidence: 0.6
       };
@@ -349,6 +402,10 @@ var UniCart = (() => {
       const pid = extractProductIdFromUrl2(url);
       if (pid) c.product_id = pid;
     }
+    if (!c.material) {
+      const mat = extractMaterialFromDom2(doc);
+      if (mat) c.material = mat;
+    }
     if (!c.color) {
       const color = extractColorFromDom2(doc);
       if (color) c.color = color;
@@ -423,7 +480,7 @@ var UniCart = (() => {
     );
     if (category) {
       c.category = {
-        value: normalizeCategory(category),
+        value: category,
         source: "site_json",
         confidence: 0.85
       };
@@ -468,6 +525,28 @@ var UniCart = (() => {
     }
     return null;
   }
+  function extractMaterialFromDom2(doc) {
+    const section = doc.getElementById("productMaterialDescription-content");
+    if (section) {
+      const els = Array.from(section.querySelectorAll('[data-testid="ITOTypography"]'));
+      for (let i = 0; i < els.length; i++) {
+        if (/fabric\s*details/i.test(els[i].textContent?.trim() ?? "")) {
+          const raw = els[i + 1]?.textContent?.trim();
+          if (raw) {
+            const line = raw.split(/\r?\n/).find((l) => /\d+%/.test(l))?.trim();
+            if (line) return { value: line, source: "dom", confidence: 0.8 };
+          }
+        }
+      }
+    }
+    const items = Array.from(doc.querySelectorAll("li, p")).filter(
+      (el) => /^\d+%\s+\w+/i.test(el.textContent?.trim() ?? "") && el.children.length === 0
+    ).map((el) => el.textContent?.trim()).filter((t) => Boolean(t));
+    if (items.length > 0) {
+      return { value: items[0], source: "dom", confidence: 0.65 };
+    }
+    return null;
+  }
   function extractColorFromDom2(doc) {
     const selectors = [
       "[data-testid='color-name']",
@@ -490,7 +569,7 @@ var UniCart = (() => {
     const items = Array.from(nav.querySelectorAll("a, li, span")).map((el) => el.textContent?.trim()).filter((t) => Boolean(t) && !/^home$/i.test(t));
     if (items.length > 0) {
       return {
-        value: normalizeCategory(items.join(" > ")),
+        value: items.join(" > "),
         source: "dom",
         confidence: 0.6
       };
@@ -665,7 +744,7 @@ var UniCart = (() => {
     const cat = asString3(schema.category);
     if (cat) {
       c.category = {
-        value: normalizeCategory(cat),
+        value: cat,
         source: "jsonld",
         confidence: 0.85
       };
@@ -733,7 +812,7 @@ var UniCart = (() => {
     const breadcrumb = findBreadcrumb(root, doc);
     if (breadcrumb) {
       c.category = {
-        value: normalizeCategory(breadcrumb),
+        value: breadcrumb,
         source: "dom",
         confidence: 0.5
       };
@@ -741,6 +820,10 @@ var UniCart = (() => {
     const imgEl = findMainImage(root);
     if (imgEl && isValidImageUrl(imgEl)) {
       c.image_url = { value: imgEl, source: "dom", confidence: 0.45 };
+    }
+    const materialItems = Array.from(doc.querySelectorAll("li")).filter((el) => /^\d+%\s+\w+/i.test(el.textContent?.trim() ?? "") && el.children.length === 0).map((el) => el.textContent?.trim()).filter((t) => Boolean(t));
+    if (materialItems.length > 0) {
+      c.material = { value: materialItems.join(", "), source: "dom", confidence: 0.55 };
     }
     return c;
   }
@@ -796,7 +879,8 @@ var UniCart = (() => {
       "sizing",
       "color",
       "image_url",
-      "product_id"
+      "product_id",
+      "material"
     ];
     const merged = {};
     for (const field of fields) {
@@ -813,11 +897,12 @@ var UniCart = (() => {
       title: c.title ? normalizeString(c.title.value) : null,
       brand: c.brand?.value ?? null,
       price_usd: c.price_usd?.value ?? null,
-      category: c.category ? normalizeCategory(c.category.value) : null,
+      category: normalizeProductType(c.title?.value ?? null, c.category?.value ?? null),
       sizing: c.sizing?.value ?? null,
       color: c.color ? normalizeString(c.color.value) : null,
       image_url: resolveProtocol2(c.image_url?.value ?? "") || null,
       product_id: c.product_id?.value?.trim() || null,
+      material: c.material ? normalizeString(c.material.value) : null,
       url,
       field_sources: {},
       field_confidence: {}
@@ -833,7 +918,8 @@ var UniCart = (() => {
       "sizing",
       "color",
       "image_url",
-      "product_id"
+      "product_id",
+      "material"
     ];
     for (const f of fields) {
       const cand = c[f];
