@@ -26,7 +26,7 @@ const cartList = document.getElementById('cart-list');
 const accountLabel = document.getElementById('account-label');
 const webappLink = document.getElementById('webapp-link');
 
-const WEB_APP_URL = 'https://unicart.vercel.app';
+const WEB_APP_URL = 'https://unicart-app-gxg9fycudccngtd2.eastus-01.azurewebsites.net';
 
 // ── Init ───────────────────────────────────────────────────────────────────
 (async () => {

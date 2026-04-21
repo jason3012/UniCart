@@ -12,6 +12,6 @@
     "service_worker": "background.js"
   },
   "externally_connectable": {
-    "matches": ["https://unicart.vercel.app/*", "http://localhost:3000/*"]
+    "matches": ["https://unicart-app-gxg9fycudccngtd2.eastus-01.azurewebsites.net/*", "http://localhost:3000/*"]
   }
 }

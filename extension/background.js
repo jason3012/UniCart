@@ -5,7 +5,7 @@ importScripts('registry.js');
 
 // For local testing: change to 'http://localhost:3000'
 // For production: change to 'https://unicart.vercel.app'
-const WEB_APP_URL = 'http://localhost:3000';
+const WEB_APP_URL = 'https://unicart-app-gxg9fycudccngtd2.eastus-01.azurewebsites.net';
 
 // ── Badge indicator ─────────────────────────────────────────────────────────
 function detectSiteFromUrl(url) {
