@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4.4.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -35,9 +35,8 @@ jobs:
       - name: Copy static assets into standalone
         run: |
           mkdir -p web/.next/standalone/.next/static
-          mkdir -p web/.next/standalone/public
           cp -r web/.next/static/. web/.next/standalone/.next/static/
-          cp -r web/public/. web/.next/standalone/public/
+          if [ -d web/public ]; then cp -r web/public/. web/.next/standalone/public/; fi
           node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('web/.next/standalone/package.json')); p.scripts={start:'node server.js'}; fs.writeFileSync('web/.next/standalone/package.json',JSON.stringify(p,null,2))"
 
       - name: Deploy to Azure App Service
