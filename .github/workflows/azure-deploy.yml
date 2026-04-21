@@ -37,7 +37,7 @@ jobs:
           mkdir -p web/.next/standalone/web/.next/static
           cp -r web/.next/static/. web/.next/standalone/web/.next/static/
           if [ -d web/public ]; then cp -r web/public/. web/.next/standalone/web/public/; fi
-          echo '{"scripts":{"start":"node server.js"}}' > web/.next/standalone/web/package.json
+          echo '{"name":"unicart","version":"0.1.0","scripts":{"start":"node server.js"}}' > web/.next/standalone/web/package.json
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
