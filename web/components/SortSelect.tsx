@@ -1,6 +1,8 @@
 'use client';
 
-const OPTIONS = [
+export type SortKey = 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'brand' | 'category';
+
+const OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'newest', label: 'Newest saved' },
   { value: 'oldest', label: 'Oldest saved' },
   { value: 'price_asc', label: 'Price: low → high' },
@@ -10,16 +12,17 @@ const OPTIONS = [
 ];
 
 interface Props {
-  value: string;
-  onChange: (v: string) => void; // eslint-disable-line no-unused-vars
+  value: SortKey;
+  onChange: (v: SortKey) => void;
 }
 
 export default function SortSelect({ value, onChange }: Props) {
   return (
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-gray-900"
+      onChange={(e) => onChange(e.target.value as SortKey)}
+      className="text-sm border border-[#e5e0d8] rounded-lg px-3 py-1.5 bg-[#faf9f7] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#1c1917] text-[#1c1917]"
+      style={{ fontFamily: 'var(--font-sans)' }}
     >
       {OPTIONS.map((o) => (
         <option key={o.value} value={o.value}>

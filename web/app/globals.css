@@ -3,14 +3,136 @@
 @tailwind utilities;
 
 :root {
-  --foreground: #1a1a1a;
-  --background: #fafafa;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --accent: #111827;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cormorant), Georgia, serif;
+
+  --bg: #faf9f7;
+  --fg: #1c1917;
+  --muted: #78716c;
+  --border: #e5e0d8;
+  --accent-zara: #c2856a;
+  --accent-uniqlo: #5a7d8f;
+  --surface: #ffffff;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  font-family: var(--font-sans);
+  color: var(--fg);
+  background: var(--bg);
+}
+
+/* ── @property breathing gradient stops ── */
+@property --cg1 { syntax: '<color>'; inherits: false; initial-value: #e8e2d8; }
+@property --cg2 { syntax: '<color>'; inherits: false; initial-value: #cfc3ae; }
+@property --cg3 { syntax: '<color>'; inherits: false; initial-value: #c8d4e0; }
+@property --cg4 { syntax: '<color>'; inherits: false; initial-value: #a8bace; }
+@property --cg5 { syntax: '<color>'; inherits: false; initial-value: #e8d4d0; }
+@property --cg6 { syntax: '<color>'; inherits: false; initial-value: #cfb4ae; }
+@property --cg7 { syntax: '<color>'; inherits: false; initial-value: #d4e0d0; }
+@property --cg8 { syntax: '<color>'; inherits: false; initial-value: #b8ccb4; }
+
+/* Card 0 — Zara jacket: warm stone */
+.card-img-0 {
+  background: linear-gradient(150deg, var(--cg1), var(--cg2));
+  animation: breathe-0 7s ease-in-out infinite;
+}
+@keyframes breathe-0 {
+  0%, 100% { --cg1: #e8e2d8; --cg2: #cfc3ae; }
+  50%      { --cg1: #d8d0c4; --cg2: #e4dac8; }
+}
+
+/* Card 1 — Uniqlo sweater: slate blue */
+.card-img-1 {
+  background: linear-gradient(150deg, var(--cg3), var(--cg4));
+  animation: breathe-1 8.5s ease-in-out infinite;
+}
+@keyframes breathe-1 {
+  0%, 100% { --cg3: #c8d4e0; --cg4: #a8bace; }
+  50%      { --cg3: #b8c8dc; --cg4: #bcccd8; }
+}
+
+/* Card 2 — Zara trousers: dusty rose */
+.card-img-2 {
+  background: linear-gradient(150deg, var(--cg5), var(--cg6));
+  animation: breathe-2 6.5s ease-in-out infinite;
+}
+@keyframes breathe-2 {
+  0%, 100% { --cg5: #e8d4d0; --cg6: #cfb4ae; }
+  50%      { --cg5: #dcc4c0; --cg6: #e0cac4; }
+}
+
+/* Card 3 — Uniqlo tank: sage green */
+.card-img-3 {
+  background: linear-gradient(150deg, var(--cg7), var(--cg8));
+  animation: breathe-3 9s ease-in-out infinite;
+}
+@keyframes breathe-3 {
+  0%, 100% { --cg7: #d4e0d0; --cg8: #b8ccb4; }
+  50%      { --cg7: #c8d8c4; --cg8: #ccdcc8; }
+}
+
+/* ── Collage card animations ── */
+.collage-card {
+  border-radius: 12px;
+  overflow: hidden;
+  transform: rotate(var(--card-rotate, 0deg));
+  transition:
+    transform 0.32s cubic-bezier(0.25, 1, 0.5, 1),
+    box-shadow 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+  animation: collage-card-enter 0.72s cubic-bezier(0.16, 1, 0.3, 1) var(--card-delay, 0s) both;
+  will-change: transform, opacity;
+}
+
+.collage-card-hovered {
+  box-shadow: 0 24px 64px rgba(28, 25, 23, 0.22) !important;
+  z-index: 20 !important;
+}
+
+@keyframes collage-card-enter {
+  from {
+    opacity: 0;
+    transform: rotate(var(--card-rotate, 0deg)) translateY(32px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(var(--card-rotate, 0deg)) translateY(0) scale(1);
+  }
+}
+
+/* ── Floating badge ── */
+.collage-badge {
+  animation:
+    collage-badge-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both,
+    collage-badge-float 3.8s ease-in-out 1.4s infinite;
+}
+
+@keyframes collage-badge-enter {
+  from {
+    opacity: 0;
+    transform: rotate(-2deg) translateY(10px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-2deg) translateY(0) scale(1);
+  }
+}
+
+@keyframes collage-badge-float {
+  0%, 100% { transform: rotate(-2deg) translateY(0px); }
+  50%       { transform: rotate(-2deg) translateY(-5px); }
+}
+
+/* ── Accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  .collage-card {
+    animation: none !important;
+    transition: none !important;
+    transform: rotate(var(--card-rotate, 0deg)) !important;
+    opacity: 1 !important;
+  }
+  .collage-badge {
+    animation: none !important;
+    transform: rotate(-2deg) !important;
+    opacity: 1 !important;
+  }
 }

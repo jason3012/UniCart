@@ -1,57 +1,40 @@
-import { createClient } from '@/lib/supabase/server';
-import { upsertItems } from '@/lib/localStore';
-import { NextRequest, NextResponse } from 'next/server';
-import type { UpsertPayload } from '@/lib/types';
+import { auth } from '@/lib/auth'
+import { verifyExtensionToken } from '@/lib/auth/token'
+import { dbUpsertItem } from '@/lib/db/cosmos'
+import { upsertItems } from '@/lib/localStore'
+import { NextRequest, NextResponse } from 'next/server'
+import type { UpsertPayload } from '@/lib/types'
+
+async function getUserId(req: NextRequest): Promise<string | null> {
+  const session = await auth()
+  if (session?.user?.id) return session.user.id
+  const header = req.headers.get('authorization')
+  if (header?.startsWith('Bearer ')) {
+    try { return await verifyExtensionToken(header.slice(7)) } catch { return null }
+  }
+  return null
+}
 
 export async function POST(request: NextRequest) {
-  let body: { items: UpsertPayload[] };
+  let body: { items: UpsertPayload[] }
   try {
-    body = await request.json();
+    body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
   if (!Array.isArray(body.items) || body.items.length === 0) {
-    return NextResponse.json({ error: 'items must be a non-empty array' }, { status: 400 });
+    return NextResponse.json({ error: 'items must be a non-empty array' }, { status: 400 })
   }
 
   if (process.env.LOCAL_DEV === 'true') {
-    const items = await upsertItems(body.items);
-    return NextResponse.json({ items, count: items.length });
+    const items = await upsertItems(body.items)
+    return NextResponse.json({ items, count: items.length })
   }
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getUserId(request)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const rows = body.items.map((item) => ({
-    user_id: user.id,
-    url: item.url,
-    brand: item.brand,
-    product_id: item.product_id,
-    title: item.title,
-    image_url: item.image_url,
-    price_usd: item.price_usd ?? null,
-    category: item.category ?? null,
-    color: item.color ?? null,
-    sizing: item.sizing ?? null,
-    field_sources: item.field_sources ?? null,
-    field_confidence: item.field_confidence ?? null,
-    extracted_at: item.extracted_at ?? null,
-    updated_at: new Date().toISOString(),
-  }));
-
-  const { data, error } = await supabase
-    .from('items')
-    .upsert(rows, { onConflict: 'user_id,brand,product_id' })
-    .select();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ items: data, count: data?.length ?? 0 }, { status: 200 });
+  const items = await Promise.all(body.items.map((payload) => dbUpsertItem(userId, payload)))
+  return NextResponse.json({ items, count: items.length }, { status: 200 })
 }

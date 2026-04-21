@@ -1,15 +1,14 @@
-import { redirect } from 'next/navigation';
-import LoginForm from './LoginForm';
+import { redirect } from 'next/navigation'
+import LoginForm from './LoginForm'
 
-// Server component — checks LOCAL_DEV before rendering the Supabase-dependent form
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { source?: string; next?: string; ext_id?: string };
+  searchParams: { source?: string; ext_id?: string }
 }) {
   if (process.env.LOCAL_DEV === 'true') {
-    redirect('/app');
+    redirect('/app')
   }
 
-  return <LoginForm searchParams={searchParams} />;
+  return <LoginForm searchParams={searchParams} />
 }

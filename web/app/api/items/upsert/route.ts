@@ -1,62 +1,42 @@
-import { createClient } from '@/lib/supabase/server';
-import { upsertItem } from '@/lib/localStore';
-import { NextRequest, NextResponse } from 'next/server';
-import type { UpsertPayload } from '@/lib/types';
+import { auth } from '@/lib/auth'
+import { verifyExtensionToken } from '@/lib/auth/token'
+import { dbUpsertItem } from '@/lib/db/cosmos'
+import { upsertItem } from '@/lib/localStore'
+import { NextRequest, NextResponse } from 'next/server'
+import type { UpsertPayload } from '@/lib/types'
+
+async function getUserId(req: NextRequest): Promise<string | null> {
+  const session = await auth()
+  if (session?.user?.id) return session.user.id
+  const header = req.headers.get('authorization')
+  if (header?.startsWith('Bearer ')) {
+    try { return await verifyExtensionToken(header.slice(7)) } catch { return null }
+  }
+  return null
+}
 
 export async function POST(request: NextRequest) {
-  let body: UpsertPayload;
+  let body: UpsertPayload
   try {
-    body = await request.json();
+    body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const required = ['url', 'brand', 'product_id', 'title', 'image_url'];
+  const required = ['url', 'brand', 'product_id', 'title', 'image_url']
   for (const field of required) {
     if (!body[field as keyof UpsertPayload]) {
-      return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
+      return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 })
     }
   }
 
   if (process.env.LOCAL_DEV === 'true') {
-    const item = await upsertItem(body);
-    return NextResponse.json({ item });
+    return NextResponse.json({ item: await upsertItem(body) })
   }
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getUserId(request)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { data, error } = await supabase
-    .from('items')
-    .upsert(
-      {
-        user_id: user.id,
-        url: body.url,
-        brand: body.brand,
-        product_id: body.product_id,
-        title: body.title,
-        image_url: body.image_url,
-        price_usd: body.price_usd ?? null,
-        category: body.category ?? null,
-        color: body.color ?? null,
-        sizing: body.sizing ?? null,
-        field_sources: body.field_sources ?? null,
-        field_confidence: body.field_confidence ?? null,
-        extracted_at: body.extracted_at ?? null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,brand,product_id' },
-    )
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ item: data }, { status: 200 });
+  const item = await dbUpsertItem(userId, body)
+  return NextResponse.json({ item }, { status: 200 })
 }

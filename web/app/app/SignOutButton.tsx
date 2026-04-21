@@ -1,23 +1,17 @@
-'use client';
+'use client'
 
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react'
 
 export default function SignOutButton() {
-  const router = useRouter();
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/');
-  }
-
   return (
     <button
-      onClick={handleSignOut}
-      className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+      onClick={() => signOut({ callbackUrl: '/' })}
+      className="text-sm transition-colors"
+      style={{ color: '#a8a29e', fontFamily: 'var(--font-sans)' }}
+      onMouseEnter={(e) => (e.currentTarget.style.color = '#1c1917')}
+      onMouseLeave={(e) => (e.currentTarget.style.color = '#a8a29e')}
     >
       Sign out
     </button>
-  );
+  )
 }

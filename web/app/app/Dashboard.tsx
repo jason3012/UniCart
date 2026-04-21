@@ -5,10 +5,8 @@ import { useRouter } from 'next/navigation';
 import type { Item } from '@/lib/types';
 import ItemCard from '@/components/ItemCard';
 import FilterPanel from '@/components/FilterPanel';
-import SortSelect from '@/components/SortSelect';
+import SortSelect, { type SortKey } from '@/components/SortSelect';
 import CompareBar from '@/components/CompareBar';
-
-type SortKey = 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'brand' | 'category';
 
 export interface Filters {
   brand: string;
@@ -82,7 +80,7 @@ export default function Dashboard({ initialItems }: { initialItems: Item[] }) {
   function toggleCompare(id: string) {
     setCompareIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= 4) return prev; // silently cap at 4
+      if (prev.length >= 4) return prev;
       return [...prev, id];
     });
   }
@@ -101,12 +99,33 @@ export default function Dashboard({ initialItems }: { initialItems: Item[] }) {
   }
 
   return (
-    <div>
+    <div style={{ fontFamily: 'var(--font-sans)' }}>
       {/* Toolbar */}
       <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">
+        <h1
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '28px',
+            fontWeight: 600,
+            fontStyle: 'italic',
+            letterSpacing: '-0.5px',
+            color: '#1c1917',
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: '10px',
+          }}
+        >
           My cart
-          <span className="ml-2 text-sm font-normal text-gray-400">
+          <span
+            style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '12px',
+              fontStyle: 'normal',
+              fontWeight: 400,
+              color: '#a8a29e',
+              letterSpacing: '0px',
+            }}
+          >
             {displayed.length} item{displayed.length !== 1 ? 's' : ''}
           </span>
         </h1>
@@ -115,7 +134,16 @@ export default function Dashboard({ initialItems }: { initialItems: Item[] }) {
             onClick={refreshItems}
             disabled={refreshing}
             title="Refresh items"
-            className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-40"
+            className="p-1.5 rounded-lg border border-[#e5e0d8] transition-colors disabled:opacity-40"
+            style={{ color: '#78716c', background: 'transparent' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f0ede8';
+              e.currentTarget.style.color = '#1c1917';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = '#78716c';
+            }}
           >
             <span className={refreshing ? 'inline-block animate-spin' : ''}>↻</span>
           </button>
@@ -123,28 +151,56 @@ export default function Dashboard({ initialItems }: { initialItems: Item[] }) {
         </div>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex gap-8">
         {/* Sidebar filters */}
-        <aside className="hidden md:block w-52 shrink-0">
+        <aside className="hidden md:block w-48 shrink-0">
           <FilterPanel items={items} filters={filters} onChange={setFilters} />
         </aside>
 
         {/* Grid */}
         <div className="flex-1">
           {displayed.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-gray-400">
-              <div className="text-4xl mb-4">🛍</div>
+            <div
+              className="flex flex-col items-center justify-center py-28"
+              style={{ color: '#a8a29e' }}
+            >
               {items.length === 0 ? (
                 <>
-                  <p className="font-medium mb-1">No saved items yet</p>
-                  <p className="text-sm">Use the extension on a Zara or Uniqlo product page to save items.</p>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: '32px',
+                      fontStyle: 'italic',
+                      fontWeight: 500,
+                      color: '#c4bdb4',
+                      marginBottom: '10px',
+                      letterSpacing: '-0.5px',
+                    }}
+                  >
+                    Nothing saved yet.
+                  </p>
+                  <p className="text-sm text-center max-w-xs" style={{ color: '#a8a29e', lineHeight: 1.6 }}>
+                    Use the extension on a Zara or Uniqlo product page to save your first item.
+                  </p>
                 </>
               ) : (
                 <>
-                  <p className="font-medium mb-1">No items match your filters</p>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: '28px',
+                      fontStyle: 'italic',
+                      fontWeight: 500,
+                      color: '#c4bdb4',
+                      marginBottom: '10px',
+                    }}
+                  >
+                    No matches.
+                  </p>
                   <button
                     onClick={() => setFilters(EMPTY_FILTERS)}
-                    className="text-sm underline mt-1"
+                    className="text-sm underline transition-colors"
+                    style={{ color: '#78716c' }}
                   >
                     Clear all filters
                   </button>

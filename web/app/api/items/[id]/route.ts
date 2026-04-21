@@ -1,32 +1,33 @@
-import { createClient } from '@/lib/supabase/server';
-import { deleteItem } from '@/lib/localStore';
-import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth'
+import { verifyExtensionToken } from '@/lib/auth/token'
+import { dbDeleteItem } from '@/lib/db/cosmos'
+import { deleteItem } from '@/lib/localStore'
+import { NextRequest, NextResponse } from 'next/server'
+
+async function getUserId(req: NextRequest): Promise<string | null> {
+  const session = await auth()
+  if (session?.user?.id) return session.user.id
+  const header = req.headers.get('authorization')
+  if (header?.startsWith('Bearer ')) {
+    try { return await verifyExtensionToken(header.slice(7)) } catch { return null }
+  }
+  return null
+}
 
 export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } },
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params
+
   if (process.env.LOCAL_DEV === 'true') {
-    await deleteItem(params.id);
-    return NextResponse.json({ status: 'deleted' });
+    await deleteItem(id)
+    return NextResponse.json({ status: 'deleted' })
   }
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getUserId(request)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { error } = await supabase
-    .from('items')
-    .delete()
-    .eq('id', params.id)
-    .eq('user_id', user.id);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ status: 'deleted' });
+  await dbDeleteItem(userId, id)
+  return NextResponse.json({ status: 'deleted' })
 }

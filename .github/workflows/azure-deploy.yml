@@ -1,0 +1,40 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build
+        working-directory: web
+        env:
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
+          AUTH_URL: ${{ secrets.AUTH_URL }}
+          COSMOS_CONNECTION_STRING: ${{ secrets.COSMOS_CONNECTION_STRING }}
+        run: npm run build
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: unicart-app
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: web/.next/standalone

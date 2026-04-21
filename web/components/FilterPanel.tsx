@@ -10,7 +10,7 @@ interface Props {
 }
 
 function unique<T>(arr: (T | null | undefined)[]): T[] {
-  return [...new Set(arr.filter((v): v is T => v != null))].sort() as T[];
+  return Array.from(new Set(arr.filter((v): v is T => v != null))).sort() as T[];
 }
 
 export default function FilterPanel({ items, filters, onChange }: Props) {
@@ -30,11 +30,15 @@ export default function FilterPanel({ items, filters, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-5 text-sm">
+    <div className="space-y-5 text-sm" style={{ fontFamily: 'var(--font-sans)' }}>
       <div className="flex items-center justify-between">
-        <span className="font-medium">Filters</span>
+        <span className="font-semibold" style={{ color: '#1c1917', fontSize: '13px' }}>Filters</span>
         {hasActive && (
-          <button onClick={reset} className="text-xs text-gray-400 hover:text-gray-700 underline">
+          <button
+            onClick={reset}
+            className="text-xs hover:underline transition-colors"
+            style={{ color: '#a8a29e' }}
+          >
             Clear all
           </button>
         )}
@@ -93,21 +97,23 @@ export default function FilterPanel({ items, filters, onChange }: Props) {
       )}
 
       <FilterGroup label="Price">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 w-full">
           <input
             type="number"
             placeholder="Min"
             value={filters.priceMin}
             onChange={(e) => set('priceMin', e.target.value)}
-            className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+            className="w-full px-2 py-1.5 border border-[#e5e0d8] rounded-lg text-xs bg-[#faf9f7] focus:outline-none focus:ring-1 focus:ring-[#1c1917]"
+            style={{ color: '#1c1917' }}
           />
-          <span className="text-gray-300">–</span>
+          <span style={{ color: '#c4bdb4' }}>–</span>
           <input
             type="number"
             placeholder="Max"
             value={filters.priceMax}
             onChange={(e) => set('priceMax', e.target.value)}
-            className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+            className="w-full px-2 py-1.5 border border-[#e5e0d8] rounded-lg text-xs bg-[#faf9f7] focus:outline-none focus:ring-1 focus:ring-[#1c1917]"
+            style={{ color: '#1c1917' }}
           />
         </div>
       </FilterGroup>
@@ -118,7 +124,15 @@ export default function FilterPanel({ items, filters, onChange }: Props) {
 function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{label}</p>
+      <p
+        className="uppercase mb-2"
+        style={{
+          fontSize: '9px', fontWeight: 700, letterSpacing: '1.8px',
+          color: '#a8a29e',
+        }}
+      >
+        {label}
+      </p>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
@@ -136,11 +150,12 @@ function FilterChip({
   return (
     <button
       onClick={onClick}
-      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+      className="px-2.5 py-1 rounded-full text-xs border transition-colors"
+      style={
         active
-          ? 'bg-gray-900 text-white border-gray-900'
-          : 'border-gray-200 text-gray-600 hover:border-gray-400'
-      }`}
+          ? { background: '#1c1917', color: '#faf9f7', borderColor: '#1c1917' }
+          : { background: 'transparent', color: '#78716c', borderColor: '#e5e0d8' }
+      }
     >
       {label}
     </button>

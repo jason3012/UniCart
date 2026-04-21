@@ -1,37 +1,28 @@
-import { createClient } from '@/lib/supabase/server';
-import { listItems } from '@/lib/localStore';
-import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth'
+import { verifyExtensionToken } from '@/lib/auth/token'
+import { dbListItems } from '@/lib/db/cosmos'
+import { listItems } from '@/lib/localStore'
+import { NextRequest, NextResponse } from 'next/server'
+
+async function getUserId(req: NextRequest): Promise<string | null> {
+  const session = await auth()
+  if (session?.user?.id) return session.user.id
+  const header = req.headers.get('authorization')
+  if (header?.startsWith('Bearer ')) {
+    try { return await verifyExtensionToken(header.slice(7)) } catch { return null }
+  }
+  return null
+}
 
 export async function GET(request: NextRequest) {
   if (process.env.LOCAL_DEV === 'true') {
-    const items = await listItems();
-    return NextResponse.json({ items });
+    return NextResponse.json({ items: await listItems() })
   }
 
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getUserId(request)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  let query = supabase
-    .from('items')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  const brand = searchParams.get('brand');
-  if (brand) query = query.eq('brand', brand);
-
-  const category = searchParams.get('category');
-  if (category) query = query.eq('category', category);
-
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ items: data });
+  const { searchParams } = new URL(request.url)
+  const items = await dbListItems(userId, searchParams.get('brand'), searchParams.get('category'))
+  return NextResponse.json({ items })
 }

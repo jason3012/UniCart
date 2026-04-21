@@ -1,38 +1,51 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import SignOutButton from './SignOutButton';
+import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import SignOutButton from './SignOutButton'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const isLocalDev = process.env.LOCAL_DEV === 'true';
-
-  let userEmail: string | null = null;
+  const isLocalDev = process.env.LOCAL_DEV === 'true'
+  let userEmail: string | null = null
 
   if (!isLocalDev) {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) redirect('/login');
-    userEmail = user.email ?? null;
+    const session = await auth()
+    if (!session?.user) redirect('/login')
+    userEmail = session.user.email ?? null
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/app" className="font-semibold text-lg tracking-tight">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)', fontFamily: 'var(--font-sans)' }}>
+      <header
+        className="sticky top-0 z-10 border-b border-[#e5e0d8]"
+        style={{ background: 'rgba(250,249,247,0.9)', backdropFilter: 'blur(12px)' }}
+      >
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link
+            href="/app"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '20px',
+              fontWeight: 600,
+              letterSpacing: '-0.4px',
+              color: '#1c1917',
+              textDecoration: 'none',
+            }}
+          >
             UniCart
           </Link>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          <div className="flex items-center gap-4">
             {isLocalDev ? (
-              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">
+              <span
+                className="text-xs px-2 py-0.5 rounded font-medium"
+                style={{ background: '#fef3c7', color: '#92400e' }}
+              >
                 Local dev
               </span>
             ) : (
               <>
-                <span className="hidden sm:block">{userEmail}</span>
+                <span className="hidden sm:block text-sm" style={{ color: '#78716c' }}>
+                  {userEmail}
+                </span>
                 <SignOutButton />
               </>
             )}
@@ -41,5 +54,5 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">{children}</main>
     </div>
-  );
+  )
 }
