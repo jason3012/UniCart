@@ -45,3 +45,4 @@ jobs:
           app-name: unicart-app
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DF44E95906D049A584753E2A98EAE0F9 }}
           package: web/.next/standalone/web
+          clean: true
