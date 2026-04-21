@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "UniCart",
   "version": "0.2.0",
-  "description": "Save Zara and Uniqlo products to your universal cart.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "description": "Save items from Zara, Uniqlo, COS, Ralph Lauren, Banana Republic, Buck Mason, J.Crew and more to your universal cart.",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "UniCart"
@@ -12,6 +12,6 @@
     "service_worker": "background.js"
   },
   "externally_connectable": {
-    "matches": ["https://unicart.vercel.app/*"]
+    "matches": ["https://unicart.vercel.app/*", "http://localhost:3000/*"]
   }
 }

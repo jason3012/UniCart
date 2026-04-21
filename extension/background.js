@@ -1,6 +1,45 @@
 'use strict';
 
-const WEB_APP_URL = 'https://unicart.vercel.app';
+// Provides REGISTRY_HOSTNAMES global — auto-generated from src/registry/sites.ts
+importScripts('registry.js');
+
+// For local testing: change to 'http://localhost:3000'
+// For production: change to 'https://unicart.vercel.app'
+const WEB_APP_URL = 'http://localhost:3000';
+
+// ── Badge indicator ─────────────────────────────────────────────────────────
+function detectSiteFromUrl(url) {
+  if (!url) return 'unknown';
+  try {
+    const host = new URL(url).hostname;
+    if (host.includes('zara.com')) return 'zara';
+    if (host.includes('uniqlo.com')) return 'uniqlo';
+    if (typeof REGISTRY_HOSTNAMES !== 'undefined' &&
+        REGISTRY_HOSTNAMES.some((h) => host.includes(h))) return 'registry';
+  } catch (_) { /* ignore */ }
+  return 'unknown';
+}
+
+function updateBadge(tabId, url) {
+  const site = detectSiteFromUrl(url);
+  if (site !== 'unknown') {
+    chrome.action.setBadgeText({ text: '●', tabId });
+    chrome.action.setBadgeBackgroundColor({ color: '#22c55e', tabId });
+  } else {
+    chrome.action.setBadgeText({ text: '', tabId });
+  }
+}
+
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    updateBadge(tabId, tab.url);
+  } catch (_) { /* tab may have been closed */ }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete') updateBadge(tabId, tab.url);
+});
 
 // Internal message router (from popup / content scripts)
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -61,14 +100,14 @@ async function syncToServer(accessToken) {
 
 async function saveToServer(item) {
   const { auth } = await chrome.storage.local.get('auth');
-  if (!auth?.access_token) return; // not signed in, skip
+  // In production, skip if not signed in. In local dev, always try.
+  const token = auth?.access_token;
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   await fetch(`${WEB_APP_URL}/api/items/upsert`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${auth.access_token}`,
-    },
+    headers,
     body: JSON.stringify(item),
   }).catch((err) => console.warn('[UniCart] Server upsert failed:', err));
 }
@@ -96,7 +135,7 @@ const HANDLERS = {
     // Run extraction and return the result
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: () => window.UniCart.extract(document, location.href),
+      func: () => (window.UniCart.extractWithRegistry ?? window.UniCart.extract)(document, location.href),
     });
 
     console.log('[UniCart] Extraction result:', JSON.stringify(result, null, 2));

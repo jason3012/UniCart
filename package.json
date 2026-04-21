@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit",
-    "build:ext": "esbuild src/index.ts --bundle --outfile=extension/extractor.bundle.js --platform=browser --global-name=UniCart",
+    "build:registry": "tsx scripts/build-registry.ts",
+    "build:ext": "npm run build:registry && esbuild src/registry/index.ts --bundle --outfile=extension/extractor.bundle.js --platform=browser --global-name=UniCart",
+    "gen-fixture": "tsx scripts/gen-fixture.ts",
     "test": "vitest run",
     "test:unit": "vitest run testing/unit",
     "test:fixture": "vitest run testing/fixture",
@@ -22,6 +24,7 @@
     "esbuild": "^0.21.0",
     "eslint": "^8.57.0",
     "jsdom": "^24.1.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.4.5",
     "vitest": "^1.6.0"
   }

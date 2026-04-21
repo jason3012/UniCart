@@ -1,0 +1,1 @@
+.plp_back-to-top{display:flex;align-items:center;justify-content:center;position:fixed;bottom:60px;right:28px;z-index:100;width:36px;height:36px;background-color:#003764;fill:#ffffff;box-shadow:0 3px 7px 0 rgba(0,0,0,.15);border-radius:50%;border:0;cursor:pointer}@media (min-width:768px){.plp_back-to-top{right:84px}}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="44px" height="44px" viewBox="0 0 44 44" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>IconographySet_Four Payments</title>
+    <g id="PDP" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round">
+        <g id="1.5c-PDP---Info-Modal---No-Icons" transform="translate(-1193.000000, -689.000000)" stroke="#000000" stroke-width="1.12">
+            <g id="IconographySet_Four-Payments" transform="translate(1194.000000, 690.000000)">
+                <path d="M19.0657895,3.86842105 C8.5360447,3.86842105 0,12.4044658 0,22.9342105 L19.0657895,22.9342105 L19.0657895,3.86842105 Z" id="Path"></path>
+                <path d="M0,22.9342105 C0,33.4639553 8.5360447,42 19.0657895,42 L19.0657895,22.9342105 L0,22.9342105 Z" id="Path"></path>
+                <path d="M19.0657895,42 L19.0657895,42 C24.1223512,42 28.9718094,39.9912887 32.5473385,36.4157596 C36.1228676,32.8402304 38.1315789,27.9907723 38.1315789,22.9342105 L19.0657895,22.9342105 L19.0657895,42 Z" id="Path"></path>
+                <path d="M22.9342105,0 L22.9342105,0 L22.9342105,19.0657895 L42,19.0657895 C42,14.0092277 39.9912887,9.15976956 36.4157596,5.58424045 C32.8402304,2.00871134 27.9907723,0 22.9342105,0 Z" id="Path"></path>
+            </g>
+        </g>
+    </g>
+</svg>

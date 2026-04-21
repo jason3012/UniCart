@@ -30,11 +30,13 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "fs";
 import { join, resolve } from "path";
 import { JSDOM } from "jsdom";
-import { extract } from "../../src/core/extract.js";
+import { extractWithRegistry } from "../../src/registry/index.js";
 import type { ExtractionResult } from "../../src/types/index.js";
 
 const FIXTURES_DIR = resolve("testing/fixtures");
-const BRANDS = ["zara", "uniqlo"] as const;
+const BRANDS = readdirSync(FIXTURES_DIR, { withFileTypes: true })
+  .filter((d) => d.isDirectory())
+  .map((d) => d.name);
 
 // Gate thresholds
 const REQUIRED_FIELD_THRESHOLD = 0.9; // 90%
@@ -97,7 +99,7 @@ function runFixture(
   golden: GoldenFile
 ): FixtureResult {
   const dom = new JSDOM(html, { url });
-  const result: ExtractionResult = extract(dom.window.document as unknown as Document, url);
+  const result: ExtractionResult = extractWithRegistry(dom.window.document as unknown as Document, url);
 
   const errors: string[] = [];
   let priceTested = false;
@@ -150,10 +152,10 @@ function runFixture(
   }
 
   // Optional fields — only check if present in golden
-  if (g.category !== undefined && g.category !== "" && p.category === null) {
+  if (g.category != null && g.category !== "" && p.category === null) {
     errors.push(`category: got null, expected non-empty`);
   }
-  if (g.color !== undefined && g.color !== "" && p.color === null) {
+  if (g.color != null && g.color !== "" && p.color === null) {
     errors.push(`color: got null, expected non-empty`);
   }
 

@@ -67,16 +67,25 @@ function detectSite(url) {
     const host = new URL(url).hostname;
     if (host.includes('zara.com')) return 'zara';
     if (host.includes('uniqlo.com')) return 'uniqlo';
+    // Registry brands (REGISTRY_HOSTNAMES loaded from registry.js)
+    if (typeof REGISTRY_HOSTNAMES !== 'undefined') {
+      if (REGISTRY_HOSTNAMES.some(h => host.includes(h))) return 'registry';
+    }
   } catch (_) { /* ignore */ }
   return 'unknown';
 }
 
 // ── Render helpers ─────────────────────────────────────────────────────────
 function renderSiteStatus() {
-  const labels = { zara: 'Zara product page', uniqlo: 'Uniqlo product page', unknown: 'Unsupported site' };
+  const labels = {
+    zara: 'Zara product page',
+    uniqlo: 'Uniqlo product page',
+    registry: 'Supported product page',
+    unknown: 'Unsupported site',
+  };
   const supported = state.site !== 'unknown';
 
-  siteBadge.textContent = labels[state.site] || 'Unsupported site';
+  siteBadge.textContent = labels[state.site] ?? 'Unsupported site';
   siteBadge.className = `site-badge ${supported ? 'supported' : 'unsupported'}`;
 
   saveBtn.disabled = !supported || state.saving;

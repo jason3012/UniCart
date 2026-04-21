@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "site": "unknown",
+  "product": {
+    "title": "Classic chino pant",
+    "brand": "J.Crew",
+    "product_id": "ME957",
+    "image_url": "https://www.jcrew.com/s7-img-facade/BE611_WT0002",
+    "price_usd": 98,
+    "color": "WHITE",
+    "material": null
+  }
+}

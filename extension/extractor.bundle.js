@@ -18,11 +18,11 @@ var UniCart = (() => {
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-  // src/index.ts
-  var src_exports = {};
-  __export(src_exports, {
-    detectSite: () => detectSite,
-    extract: () => extract
+  // src/registry/index.ts
+  var registry_exports = {};
+  __export(registry_exports, {
+    extract: () => extract,
+    extractWithRegistry: () => extractWithRegistry
   });
 
   // src/core/detectSite.ts
@@ -950,5 +950,584 @@ var UniCart = (() => {
     if (url.startsWith("//")) return "https:" + url;
     return url;
   }
-  return __toCommonJS(src_exports);
+
+  // src/registry/shared-extractors.ts
+  function isValidImageUrl2(url) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+      if (/\.(jpg|jpeg|png|webp|avif|gif|svg)(\?.*)?$/i.test(parsed.pathname)) return true;
+      if (/\.(html?|php|aspx?|jsp)$/i.test(parsed.pathname)) return false;
+      return parsed.pathname.length > 4;
+    } catch {
+      return false;
+    }
+  }
+  function extractFromJsonLd2(doc) {
+    const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of scripts) {
+      try {
+        const data = JSON.parse(script.textContent ?? "");
+        const schema = findProductSchema2(data);
+        if (schema) return buildFromProductSchema2(schema);
+      } catch {
+        continue;
+      }
+    }
+    return {};
+  }
+  function findProductSchema2(data) {
+    if (!data || typeof data !== "object") return null;
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        const found = findProductSchema2(item);
+        if (found) return found;
+      }
+      return null;
+    }
+    const obj = data;
+    const type = obj["@type"];
+    const isProduct = type === "Product" || Array.isArray(type) && type.includes("Product");
+    if (isProduct) return obj;
+    if (Array.isArray(obj["@graph"])) {
+      for (const item of obj["@graph"]) {
+        const found = findProductSchema2(item);
+        if (found) return found;
+      }
+    }
+    if (Array.isArray(obj["hasVariant"])) {
+      for (const item of obj["hasVariant"]) {
+        const found = findProductSchema2(item);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  function buildFromProductSchema2(schema) {
+    const c = {};
+    if (typeof schema.name === "string" && isValidTitle(schema.name)) {
+      c.title = { value: normalizeString(schema.name), source: "jsonld", confidence: 0.92 };
+    }
+    const brandRaw = typeof schema.brand === "string" ? schema.brand : schema.brand && typeof schema.brand === "object" ? schema.brand.name : void 0;
+    if (brandRaw) {
+      const brand = normalizeBrand(brandRaw);
+      if (brand) {
+        c.brand = { value: brand, source: "jsonld", confidence: 0.92 };
+      } else {
+        c.brand = { value: brandRaw.trim(), source: "jsonld", confidence: 0.6 };
+      }
+    }
+    const img = schema.image;
+    const imgUrl = typeof img === "string" ? img : Array.isArray(img) && typeof img[0] === "string" ? img[0] : typeof img === "object" && img !== null ? img.url : void 0;
+    if (imgUrl && isValidImageUrl2(imgUrl)) {
+      c.image_url = { value: imgUrl, source: "jsonld", confidence: 0.9 };
+    }
+    const pid = asString4(schema.sku) ?? asString4(schema.productID) ?? asString4(schema.mpn);
+    if (pid) {
+      c.product_id = { value: pid, source: "jsonld", confidence: 0.92 };
+    }
+    const offersRaw = schema.offers;
+    const offer = Array.isArray(offersRaw) ? offersRaw[0] : offersRaw;
+    if (offer && typeof offer === "object") {
+      const offerObj = offer;
+      const currency = asString4(offerObj.priceCurrency) ?? "";
+      const priceRaw = offerObj.price ?? offerObj.lowPrice;
+      if (isCurrencyUSD(currency) && priceRaw !== void 0) {
+        const amount = typeof priceRaw === "number" ? priceRaw : parseFloat(String(priceRaw));
+        if (!isNaN(amount) && amount > 0) {
+          c.price_usd = { value: amount, source: "jsonld", confidence: 0.9 };
+        }
+      }
+    }
+    const cat = asString4(schema.category);
+    if (cat) {
+      c.category = { value: cat, source: "jsonld", confidence: 0.85 };
+    }
+    const color = asString4(schema.color);
+    if (color) {
+      c.color = { value: normalizeString(color), source: "jsonld", confidence: 0.85 };
+    }
+    return c;
+  }
+  function extractFromMeta2(doc) {
+    const c = {};
+    const get = (selector) => doc.querySelector(`meta[property="${selector}"], meta[name="${selector}"]`)?.getAttribute("content") ?? null;
+    const ogTitle = get("og:title");
+    if (ogTitle && isValidTitle(ogTitle)) {
+      c.title = { value: normalizeString(ogTitle), source: "meta", confidence: 0.8 };
+    }
+    const ogImage = get("og:image");
+    if (ogImage && isValidImageUrl2(ogImage)) {
+      c.image_url = { value: ogImage, source: "meta", confidence: 0.8 };
+    }
+    const amount = get("og:price:amount") ?? get("product:price:amount");
+    const currency = get("og:price:currency") ?? get("product:price:currency");
+    if (amount && currency && isCurrencyUSD(currency)) {
+      const parsed = parseFloat(amount);
+      if (!isNaN(parsed) && parsed > 0) {
+        c.price_usd = { value: parsed, source: "meta", confidence: 0.8 };
+      }
+    }
+    const brandMeta = get("og:brand") ?? get("product:brand");
+    if (brandMeta) {
+      const brand = normalizeBrand(brandMeta);
+      if (brand) {
+        c.brand = { value: brand, source: "meta", confidence: 0.8 };
+      } else {
+        c.brand = { value: brandMeta.trim(), source: "meta", confidence: 0.6 };
+      }
+    }
+    return c;
+  }
+  function extractFromDomFallback(doc) {
+    const c = {};
+    const root = doc.querySelector("[data-testid='product-detail']") ?? doc.querySelector("[class*='product-detail']") ?? doc.querySelector("main") ?? doc.body;
+    if (!root) return c;
+    const h1 = root.querySelector("h1");
+    if (h1?.textContent && isValidTitle(h1.textContent)) {
+      c.title = {
+        value: normalizeString(h1.textContent),
+        source: "dom",
+        confidence: 0.55
+      };
+    }
+    const priceEl = findPriceElement2(root);
+    if (priceEl) {
+      const parsed = parsePriceUSD(priceEl);
+      if (parsed !== null) {
+        c.price_usd = { value: parsed, source: "dom", confidence: 0.5, rawValue: priceEl };
+      }
+    }
+    const breadcrumb = findBreadcrumb2(root, doc);
+    if (breadcrumb) {
+      c.category = { value: breadcrumb, source: "dom", confidence: 0.5 };
+    }
+    const imgEl = findMainImage2(root);
+    if (imgEl && isValidImageUrl2(imgEl)) {
+      c.image_url = { value: imgEl, source: "dom", confidence: 0.45 };
+    }
+    const sizeVal = findSelectedSize(root);
+    if (sizeVal) {
+      c.sizing = { value: sizeVal, source: "dom", confidence: 0.5 };
+    }
+    const materialItems = Array.from(doc.querySelectorAll("li")).filter(
+      (el) => /^\d+%\s+\w+/i.test(el.textContent?.trim() ?? "") && el.children.length === 0
+    ).map((el) => el.textContent?.trim()).filter((t) => Boolean(t));
+    if (materialItems.length > 0) {
+      c.material = { value: materialItems.join(", "), source: "dom", confidence: 0.55 };
+    }
+    return c;
+  }
+  function findPriceElement2(root) {
+    const selectors = [
+      "[data-testid*='price']",
+      "[class*='price']",
+      "[itemprop='price']",
+      "[class*='Price']"
+    ];
+    for (const sel of selectors) {
+      const el = root.querySelector(sel);
+      const text = el?.textContent?.trim();
+      if (text && /\$/.test(text)) return text;
+    }
+    return null;
+  }
+  function findBreadcrumb2(root, doc) {
+    const nav = doc.querySelector("[aria-label*='breadcrumb' i]") ?? doc.querySelector("[class*='breadcrumb' i]") ?? doc.querySelector("nav ol") ?? root.querySelector("[class*='breadcrumb' i]");
+    if (!nav) return null;
+    const items = Array.from(nav.querySelectorAll("a, li, span")).map((el) => el.textContent?.trim()).filter((t) => Boolean(t) && t.length > 0);
+    const filtered = items.filter((t) => !/^(home|inicio)$/i.test(t));
+    return filtered.length > 0 ? filtered.join(" > ") : null;
+  }
+  function findMainImage2(root) {
+    const selectors = [
+      "img[data-testid*='image']",
+      "img[class*='main']",
+      "img[class*='product']",
+      "img[class*='hero']"
+    ];
+    for (const sel of selectors) {
+      const img = root.querySelector(sel);
+      const src = img?.src ?? img?.dataset?.src ?? img?.dataset?.lazySrc;
+      if (src) return resolveProtocol3(src);
+    }
+    for (const img of root.querySelectorAll("img")) {
+      const src = img.src ?? img.dataset?.src;
+      if (src && (img.naturalWidth > 300 || img.width > 300)) {
+        return resolveProtocol3(src);
+      }
+    }
+    return null;
+  }
+  function findSelectedSize(root) {
+    const SIZE_RE = /^(XXS|XS|S|M|L|XL|XXL|2XL|3XL|\d{1,3}(?:\.\d)?)$/i;
+    const activeSelectors = [
+      "[data-testid*='size'][aria-selected='true']",
+      "[class*='size'][aria-selected='true']",
+      "[class*='size'][class*='selected']",
+      "[class*='size'][class*='active']",
+      "button[class*='size'][aria-pressed='true']",
+      "[data-size][aria-selected='true']"
+    ];
+    for (const sel of activeSelectors) {
+      const text = root.querySelector(sel)?.textContent?.trim();
+      if (text && SIZE_RE.test(text)) return text.toUpperCase();
+    }
+    const sizeSelect = root.querySelector(
+      "select[class*='size'], select[data-testid*='size'], select[aria-label*='size' i]"
+    );
+    if (sizeSelect) {
+      const opt = sizeSelect.options[sizeSelect.selectedIndex];
+      if (opt && SIZE_RE.test(opt.value.trim())) return opt.value.trim().toUpperCase();
+    }
+    return null;
+  }
+  function asString4(v) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number") return String(v);
+    return null;
+  }
+  function resolveProtocol3(url) {
+    if (!url) return url;
+    if (url.startsWith("//")) return "https:" + url;
+    return url;
+  }
+
+  // src/registry/sites.ts
+  var SITE_REGISTRY = [
+    {
+      hostname: "cos.com",
+      displayName: "COS",
+      // product_id is in JSON-LD sku; URL is a fallback (e.g. slim-ribbed-t-shirt-black-1229297002)
+      productIdUrlPattern: /-(\d{9,10})$/,
+      // Listing pages open a hover panel (.draggable-drawer) — extract product_id from the panel link
+      drawerProductLinkSelector: '[class*="draggable-drawer"] a[href*="/product/"]'
+    },
+    {
+      hostname: "ralphlauren.com",
+      displayName: "Ralph Lauren",
+      // URL: /cable-knit-cotton-sweater/515061.html
+      productIdUrlPattern: /\/(\d{5,6})\.html/
+    },
+    {
+      hostname: "bananarepublic.gap.com",
+      displayName: "Banana Republic"
+    },
+    {
+      hostname: "buckmason.com",
+      displayName: "Buck Mason"
+    },
+    {
+      hostname: "jcrew.com",
+      displayName: "J.Crew",
+      // URL: /classic-chino-pant/ME957?... — stable product code, not the color variant from JSON-LD sku
+      productIdUrlPattern: /\/([A-Z]{2}\d{3})(?:\?|$)/i,
+      preferUrlProductId: true
+    }
+    // {
+    //   hostname: "",
+    //   displayName: "",
+    // },
+    // {
+    //   hostname: "",
+    //   displayName: "",
+    // },
+    // {
+    //   hostname: "",
+    //   displayName: "",
+    // },
+    // {
+    //   hostname: "",
+    //   displayName: "",
+    // },
+    // {
+    //   hostname: "",
+    //   displayName: "",
+    // },
+    // {
+    //   hostname: "",
+    //   displayName: "",
+    // },
+    // {
+    //   hostname: "",
+    //   displayName: "",
+    // },
+    // Add new brands here. Each entry = one brand.
+    // Example (not yet validated — run gen-fixture.ts to generate a fixture first):
+    //
+    // {
+    //   hostname: "hm.com",
+    //   displayName: "H&M",
+    //   productIdUrlPattern: /\/productpage\.(\d+)\.html/i,
+    //   nextDataPaths: [
+    //     {
+    //       path: "props.pageProps.product",
+    //       idField: "code",
+    //       pricePath: "whitePrice.value",
+    //       currencyPath: "whitePrice.currency",
+    //       imagePath: "images.0.url",
+    //       colorPath: "articlesList.0.color.text",
+    //     },
+    //   ],
+    // },
+  ];
+
+  // src/registry/extract-generic.ts
+  var NEXT_DATA_CONFIDENCE = 0.82;
+  function extractGeneric(config, doc, url) {
+    const layers = [
+      extractFromJsonLd2(doc),
+      extractFromMeta2(doc),
+      extractFromNextData(config, doc),
+      extractFromDomFallback(doc)
+    ];
+    if (config.domOverrides) {
+      layers.push(extractFromDomOverrides(config.domOverrides, doc));
+    }
+    const merged = mergeCandidates2(layers);
+    if (config.productIdUrlPattern) {
+      const match = url.match(config.productIdUrlPattern);
+      if (match?.[1] && (!merged.product_id || config.preferUrlProductId)) {
+        merged.product_id = {
+          value: match[1],
+          source: "dom",
+          confidence: config.preferUrlProductId ? 0.95 : 0.78
+        };
+      }
+      if (!merged.product_id && config.drawerProductLinkSelector) {
+        const drawerLink = doc.querySelector(config.drawerProductLinkSelector);
+        const href = drawerLink?.getAttribute("href") ?? "";
+        const drawerMatch = href.match(config.productIdUrlPattern);
+        if (drawerMatch?.[1]) {
+          merged.product_id = {
+            value: drawerMatch[1],
+            source: "dom",
+            confidence: 0.72
+          };
+        }
+      }
+    }
+    merged.brand = { value: config.displayName, source: "site_json", confidence: 0.99 };
+    return merged;
+  }
+  function extractFromNextData(config, doc) {
+    if (!config.nextDataPaths?.length) return {};
+    const el = doc.getElementById("__NEXT_DATA__");
+    if (!el?.textContent) return {};
+    let data;
+    try {
+      data = JSON.parse(el.textContent);
+    } catch {
+      return {};
+    }
+    for (const pathConfig of config.nextDataPaths) {
+      const product = safeGet3(data, pathConfig.path);
+      if (!product || typeof product !== "object") continue;
+      const c = {};
+      const nameField = pathConfig.nameField ?? "name";
+      const name = asString5(product[nameField]);
+      if (name && isValidTitle(name)) {
+        c.title = { value: normalizeString(name), source: "site_json", confidence: NEXT_DATA_CONFIDENCE };
+      }
+      const idField = pathConfig.idField ?? "id";
+      const id = asString5(product[idField]) ?? asString5(product["productId"]) ?? asString5(product["sku"]);
+      if (id) {
+        c.product_id = { value: id, source: "site_json", confidence: NEXT_DATA_CONFIDENCE };
+      }
+      if (pathConfig.pricePath && pathConfig.currencyPath) {
+        const priceVal = safeGet3(product, pathConfig.pricePath);
+        const currency = asString5(safeGet3(product, pathConfig.currencyPath)) ?? "";
+        if (isCurrencyUSD(currency) && priceVal !== void 0) {
+          const amount = typeof priceVal === "number" ? priceVal : parseFloat(String(priceVal));
+          if (!isNaN(amount) && amount > 0) {
+            c.price_usd = { value: amount, source: "site_json", confidence: NEXT_DATA_CONFIDENCE };
+          }
+        }
+      }
+      if (pathConfig.imagePath) {
+        const imgRaw = asString5(safeGet3(product, pathConfig.imagePath));
+        if (imgRaw) {
+          const resolved = imgRaw.startsWith("//") ? "https:" + imgRaw : imgRaw;
+          if (isValidImageUrl(resolved)) {
+            c.image_url = { value: resolved, source: "site_json", confidence: NEXT_DATA_CONFIDENCE };
+          }
+        }
+      }
+      if (pathConfig.colorPath) {
+        const color = asString5(safeGet3(product, pathConfig.colorPath));
+        if (color) {
+          c.color = { value: normalizeString(color), source: "site_json", confidence: NEXT_DATA_CONFIDENCE };
+        }
+      }
+      if (c.title || c.product_id) return c;
+    }
+    return {};
+  }
+  function extractFromDomOverrides(overrides, doc) {
+    const c = {};
+    if (overrides.titleSelectors) {
+      for (const sel of overrides.titleSelectors) {
+        const text = doc.querySelector(sel)?.textContent?.trim();
+        if (text && isValidTitle(text)) {
+          c.title = { value: normalizeString(text), source: "dom", confidence: 0.6 };
+          break;
+        }
+      }
+    }
+    if (overrides.colorSelectors) {
+      for (const sel of overrides.colorSelectors) {
+        const text = doc.querySelector(sel)?.textContent?.trim();
+        if (text) {
+          c.color = { value: normalizeString(text), source: "dom", confidence: 0.6 };
+          break;
+        }
+      }
+    }
+    if (overrides.productIdSelectors) {
+      for (const sel of overrides.productIdSelectors) {
+        const el = doc.querySelector(sel);
+        const text = el?.getAttribute("data-product-id") ?? el?.getAttribute("data-productid") ?? el?.textContent?.trim();
+        if (text) {
+          c.product_id = { value: text, source: "dom", confidence: 0.65 };
+          break;
+        }
+      }
+    }
+    return c;
+  }
+  function mergeCandidates2(layers) {
+    const fields = [
+      "title",
+      "brand",
+      "price_usd",
+      "category",
+      "sizing",
+      "color",
+      "image_url",
+      "product_id",
+      "material"
+    ];
+    const merged = {};
+    for (const field of fields) {
+      const all = layers.map((l) => l[field]).filter((c) => c !== void 0);
+      const best = bestCandidate(all);
+      if (best) merged[field] = best;
+    }
+    return merged;
+  }
+  function asString5(v) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number") return String(v);
+    return null;
+  }
+  function safeGet3(obj, path) {
+    const parts = path.split(".");
+    let current = obj;
+    for (const part of parts) {
+      if (current == null || typeof current !== "object") return null;
+      if (Array.isArray(current)) {
+        const index = parseInt(part, 10);
+        current = isNaN(index) ? void 0 : current[index];
+      } else {
+        current = current[part];
+      }
+    }
+    return current ?? null;
+  }
+
+  // src/registry/index.ts
+  function extractWithRegistry(doc, url) {
+    const site = detectSite(url);
+    if (site !== "unknown") {
+      return extract(doc, url);
+    }
+    let hostname;
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      return {
+        success: false,
+        site: "unknown",
+        product: null,
+        errors: [`Invalid URL: ${url}`]
+      };
+    }
+    const config = SITE_REGISTRY.find((c) => hostname.includes(c.hostname));
+    if (!config) {
+      return {
+        success: false,
+        site: "unknown",
+        product: null,
+        errors: [
+          `Unsupported site: ${hostname}. Add an entry to SITE_REGISTRY in src/registry/sites.ts.`
+        ]
+      };
+    }
+    const errors = [];
+    let candidate;
+    try {
+      candidate = extractGeneric(config, doc, url);
+    } catch (e) {
+      return {
+        success: false,
+        site: "unknown",
+        product: null,
+        errors: [`Generic extraction failed for ${hostname}: ${String(e)}`]
+      };
+    }
+    const product = buildProduct2(candidate, url);
+    const success = product.title !== null && product.brand !== null && product.image_url !== null && product.product_id !== null;
+    if (!success) {
+      const missing = [];
+      if (!product.title) missing.push("title");
+      if (!product.brand) missing.push("brand");
+      if (!product.image_url) missing.push("image_url");
+      if (!product.product_id) missing.push("product_id");
+      errors.push(`Required fields missing: ${missing.join(", ")}`);
+    }
+    return { success, site: "unknown", product, errors };
+  }
+  function buildProduct2(c, url) {
+    const product = {
+      title: c.title ? normalizeString(c.title.value) : null,
+      brand: c.brand?.value ?? null,
+      price_usd: c.price_usd?.value ?? null,
+      category: normalizeProductType(c.title?.value ?? null, c.category?.value ?? null),
+      sizing: c.sizing?.value ?? null,
+      color: c.color ? normalizeString(c.color.value) : null,
+      image_url: resolveProtocol4(c.image_url?.value ?? "") || null,
+      product_id: c.product_id?.value?.trim() || null,
+      material: c.material ? normalizeString(c.material.value) : null,
+      url,
+      field_sources: {},
+      field_confidence: {}
+    };
+    if (product.title && !isValidTitle(product.title)) product.title = null;
+    if (product.image_url && !isValidImageUrl2(product.image_url)) product.image_url = null;
+    const fields = [
+      "title",
+      "brand",
+      "price_usd",
+      "category",
+      "sizing",
+      "color",
+      "image_url",
+      "product_id",
+      "material"
+    ];
+    for (const f of fields) {
+      const cand = c[f];
+      if (cand) {
+        product.field_sources[f] = cand.source;
+        product.field_confidence[f] = cand.confidence;
+      }
+    }
+    return product;
+  }
+  function resolveProtocol4(url) {
+    if (!url) return url;
+    if (url.startsWith("//")) return "https:" + url;
+    return url;
+  }
+  return __toCommonJS(registry_exports);
 })();

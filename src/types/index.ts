@@ -1,4 +1,4 @@
-export type Brand = "Zara" | "Uniqlo";
+export type Brand = "Zara" | "Uniqlo" | string; // widened for registry; legacy adapters still return narrow literals
 
 export type Site = "zara" | "uniqlo" | "unknown";
 
