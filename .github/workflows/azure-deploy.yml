@@ -32,19 +32,16 @@ jobs:
           COSMOS_CONNECTION_STRING: ${{ secrets.COSMOS_CONNECTION_STRING }}
         run: npm run build
 
-      - name: Inspect standalone output
-        run: find web/.next/standalone -maxdepth 2 | sort
-
       - name: Copy static assets into standalone
         run: |
-          mkdir -p web/.next/standalone/.next/static
-          cp -r web/.next/static/. web/.next/standalone/.next/static/
-          if [ -d web/public ]; then cp -r web/public/. web/.next/standalone/public/; fi
-          echo '{"scripts":{"start":"node server.js"}}' > web/.next/standalone/package.json
+          mkdir -p web/.next/standalone/web/.next/static
+          cp -r web/.next/static/. web/.next/standalone/web/.next/static/
+          if [ -d web/public ]; then cp -r web/public/. web/.next/standalone/web/public/; fi
+          echo '{"scripts":{"start":"node server.js"}}' > web/.next/standalone/web/package.json
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
           app-name: unicart-app
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DF44E95906D049A584753E2A98EAE0F9 }}
-          package: web/.next/standalone
+          package: web/.next/standalone/web
