@@ -32,9 +32,15 @@ jobs:
           COSMOS_CONNECTION_STRING: ${{ secrets.COSMOS_CONNECTION_STRING }}
         run: npm run build
 
+      - name: Copy static assets into standalone
+        run: |
+          cp -r web/.next/static web/.next/standalone/.next/static
+          cp -r web/public web/.next/standalone/public
+          node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('web/.next/standalone/package.json')); p.scripts={start:'node server.js'}; fs.writeFileSync('web/.next/standalone/package.json',JSON.stringify(p,null,2))"
+
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
           app-name: unicart-app
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DF44E95906D049A584753E2A98EAE0F9 }}
           package: web/.next/standalone
