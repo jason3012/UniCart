@@ -6,12 +6,13 @@ import ExtensionRelayClient from './ExtensionRelayClient'
 export default async function ExtensionRelayPage({
   searchParams,
 }: {
-  searchParams: { ext_id?: string }
+  searchParams: Promise<{ ext_id?: string }>
 }) {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const extId = searchParams.ext_id ?? ''
+  const params = await searchParams
+  const extId = params.ext_id ?? ''
   const token = await createExtensionToken(session.user.id, session.user.email)
 
   return (
