@@ -38,6 +38,11 @@ export default auth((req) => {
     Object.entries(CORS_HEADERS).forEach(([k, v]) => response.headers.set(k, v))
     return response
   }
+
+  // Expose pathname to server components via header
+  const response = NextResponse.next({ request: req })
+  response.headers.set('x-pathname', pathname)
+  return response
 })
 
 export const config = {

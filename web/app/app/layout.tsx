@@ -1,5 +1,7 @@
 import { auth } from '@/lib/auth'
+import { dbGetProfile } from '@/lib/db/cosmos'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import SignOutButton from './SignOutButton'
 
@@ -11,6 +13,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const session = await auth()
     if (!session?.user) redirect('/login')
     userEmail = session.user.email ?? null
+
+    const headersList = await headers()
+    const pathname = headersList.get('x-pathname') ?? headersList.get('x-invoke-path') ?? ''
+    const isProfilePage = pathname.includes('/app/profile')
+
+    if (!isProfilePage) {
+      const profile = await dbGetProfile(session.user.id).catch(() => null)
+      if (!profile) redirect('/app/profile')
+    }
   }
 
   return (

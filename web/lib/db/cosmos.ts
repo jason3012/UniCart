@@ -1,5 +1,5 @@
 import { CosmosClient, Database } from '@azure/cosmos'
-import type { Item, UpsertPayload } from '@/lib/types'
+import type { Item, UpsertPayload, UserProfile, ProfilePayload } from '@/lib/types'
 
 let _db: Database | null = null
 
@@ -51,6 +51,10 @@ export async function dbUpsertItem(userId: string, payload: UpsertPayload): Prom
     // new item — use now
   }
 
+  const sizing = payload.sizing != null ? String(payload.sizing) : null
+  const sizingType = payload.sizing_type
+    ?? (sizing == null ? null : /^\d/.test(sizing) ? 'numeric' : 'alpha')
+
   const doc: Item = {
     id,
     user_id: userId,
@@ -62,7 +66,8 @@ export async function dbUpsertItem(userId: string, payload: UpsertPayload): Prom
     price_usd: payload.price_usd ?? null,
     category: payload.category ?? null,
     color: payload.color ?? null,
-    sizing: payload.sizing ?? null,
+    sizing,
+    sizing_type: sizingType,
     field_sources: payload.field_sources ?? null,
     field_confidence: payload.field_confidence ?? null,
     extracted_at: payload.extracted_at ?? null,
@@ -93,4 +98,34 @@ export async function dbGetItemsByIds(userId: string, ids: string[]): Promise<It
     )
     .fetchAll()
   return resources
+}
+
+export async function dbGetProfile(userId: string): Promise<UserProfile | null> {
+  try {
+    const { resource } = await getDb().container('profiles').item(userId, userId).read<UserProfile>()
+    return resource ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function dbUpsertProfile(userId: string, payload: ProfilePayload): Promise<UserProfile> {
+  const now = new Date().toISOString()
+  const existing = await dbGetProfile(userId)
+
+  const doc: UserProfile = {
+    id: userId,
+    user_id: userId,
+    name: payload.name ?? existing?.name ?? null,
+    height_cm: payload.height_cm ?? existing?.height_cm ?? null,
+    weight_kg: payload.weight_kg ?? existing?.weight_kg ?? null,
+    favorite_brands: payload.favorite_brands ?? existing?.favorite_brands ?? [],
+    preferred_alpha_size: payload.preferred_alpha_size ?? existing?.preferred_alpha_size ?? null,
+    preferred_numeric_size: payload.preferred_numeric_size ?? existing?.preferred_numeric_size ?? null,
+    created_at: existing?.created_at ?? now,
+    updated_at: now,
+  }
+
+  const { resource } = await getDb().container('profiles').items.upsert<UserProfile>(doc)
+  return resource!
 }

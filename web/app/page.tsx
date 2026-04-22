@@ -103,7 +103,7 @@ export default function LandingPage() {
             fontSize: '17px', lineHeight: 1.7, color: 'var(--muted)',
             maxWidth: '400px', marginBottom: '48px', fontWeight: 400,
           }}>
-            Save items from Zara and Uniqlo with one click.
+            Save items from Zara, Uniqlo, COS, Ralph Lauren, J.Crew, and more with one click.
             Filter, sort, and compare — all in one cart.
           </p>
 
@@ -143,13 +143,17 @@ export default function LandingPage() {
             {[
               { label: 'Zara', color: 'var(--accent-zara)' },
               { label: 'Uniqlo', color: 'var(--accent-uniqlo)' },
-              { label: 'More coming', color: 'var(--muted)' },
+              { label: 'COS', color: 'var(--fg)' },
+              { label: 'Ralph Lauren', color: 'var(--fg)' },
+              { label: 'J.Crew', color: 'var(--fg)' },
+              { label: 'Banana Republic', color: 'var(--fg)' },
+              { label: 'Buck Mason', color: 'var(--fg)' },
             ].map((t) => (
               <span key={t.label} style={{
                 fontSize: '11px', fontWeight: 600, letterSpacing: '0.5px',
                 color: t.color, padding: '4px 12px',
                 border: `1.5px solid ${t.color}`,
-                borderRadius: '20px', opacity: t.label === 'More coming' ? 0.55 : 1,
+                borderRadius: '20px', opacity: 1,
               }}>
                 {t.label}
               </span>
@@ -239,7 +243,7 @@ export default function LandingPage() {
           UniCart
         </span>
         <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
-          Supports Zara · Uniqlo
+          Supports Zara · Uniqlo · COS · Ralph Lauren · J.Crew · Banana Republic · Buck Mason
         </p>
       </footer>
     </div>

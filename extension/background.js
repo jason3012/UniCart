@@ -100,16 +100,26 @@ async function syncToServer(accessToken) {
 
 async function saveToServer(item) {
   const { auth } = await chrome.storage.local.get('auth');
-  // In production, skip if not signed in. In local dev, always try.
   const token = auth?.access_token;
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  await fetch(`${WEB_APP_URL}/api/items/upsert`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(item),
-  }).catch((err) => console.warn('[UniCart] Server upsert failed:', err));
+  try {
+    const res = await fetch(`${WEB_APP_URL}/api/items/upsert`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(item),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.warn('[UniCart] Server upsert failed:', res.status, text);
+      return { ok: false, status: res.status };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.warn('[UniCart] Server upsert network error:', err);
+    return { ok: false };
+  }
 }
 
 async function deleteFromServer(item) {
@@ -178,7 +188,7 @@ const HANDLERS = {
     // Save
     const item = buildItem(product);
     await chrome.storage.local.set({ items: [...items, item] });
-    saveToServer(item).catch(console.error);
+    saveToServer(item);
     return { status: 'saved', item };
   },
 
@@ -187,7 +197,7 @@ const HANDLERS = {
     const { items = [] } = await chrome.storage.local.get('items');
     const item = buildItem(product, overrides);
     await chrome.storage.local.set({ items: [...items, item] });
-    saveToServer(item).catch(console.error);
+    saveToServer(item);
     return { status: 'saved', item };
   },
 
@@ -215,7 +225,7 @@ const HANDLERS = {
     const { items = [] } = await chrome.storage.local.get('items');
     const item = buildItem(product);
     await chrome.storage.local.set({ items: [...items, item] });
-    saveToServer(item).catch(console.error);
+    saveToServer(item);
     return { status: 'saved', item };
   },
 

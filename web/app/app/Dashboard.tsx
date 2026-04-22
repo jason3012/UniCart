@@ -180,7 +180,7 @@ export default function Dashboard({ initialItems }: { initialItems: Item[] }) {
                     Nothing saved yet.
                   </p>
                   <p className="text-sm text-center max-w-xs" style={{ color: '#a8a29e', lineHeight: 1.6 }}>
-                    Use the extension on a Zara or Uniqlo product page to save your first item.
+                    Use the extension on a Zara, Uniqlo, COS, Ralph Lauren, J.Crew, Banana Republic, or Buck Mason product page to save your first item.
                   </p>
                 </>
               ) : (

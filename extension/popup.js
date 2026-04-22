@@ -46,18 +46,28 @@ async function renderAccountBar() {
   const { auth } = await chrome.storage.local.get('auth');
   webappLink.href = WEB_APP_URL + '/app';
 
-  if (auth?.user_email) {
-    accountLabel.textContent = auth.user_email;
-    accountLabel.className = 'account-label signed-in';
-  } else {
-    accountLabel.textContent = 'Sign in to sync';
-    accountLabel.className = 'account-label signed-out';
-    accountLabel.style.cursor = 'pointer';
-    accountLabel.addEventListener('click', () => {
-      const loginUrl = `${WEB_APP_URL}/login?source=extension&ext_id=${chrome.runtime.id}`;
-      chrome.tabs.create({ url: loginUrl });
-    });
+  if (auth?.access_token) {
+    // Validate token is still accepted by the server before showing as signed-in
+    const res = await fetch(`${WEB_APP_URL}/api/items`, {
+      headers: { 'Authorization': `Bearer ${auth.access_token}` },
+    }).catch(() => null);
+
+    if (res && res.ok && auth.user_email) {
+      accountLabel.textContent = auth.user_email;
+      accountLabel.className = 'account-label signed-in';
+      return;
+    }
+    // Token rejected or expired — clear stale auth
+    await chrome.storage.local.remove('auth');
   }
+
+  accountLabel.textContent = 'Sign in to sync';
+  accountLabel.className = 'account-label signed-out';
+  accountLabel.style.cursor = 'pointer';
+  accountLabel.addEventListener('click', () => {
+    const loginUrl = `${WEB_APP_URL}/login?source=extension&ext_id=${chrome.runtime.id}`;
+    chrome.tabs.create({ url: loginUrl });
+  });
 }
 
 // ── Site detection (hostname-based) ────────────────────────────────────────

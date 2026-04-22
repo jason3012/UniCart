@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { verifyExtensionToken } from '@/lib/auth/token'
-import { dbUpsertItem } from '@/lib/db/cosmos'
+import { dbUpsertItem, dbGetProfile } from '@/lib/db/cosmos'
 import { upsertItem } from '@/lib/localStore'
 import { NextRequest, NextResponse } from 'next/server'
 import type { UpsertPayload } from '@/lib/types'
@@ -36,6 +36,20 @@ export async function POST(request: NextRequest) {
 
   const userId = await getUserId(request)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Autofill sizing from profile when page had no default selected
+  if (body.sizing == null) {
+    const profile = await dbGetProfile(userId).catch(() => null)
+    if (profile) {
+      const cat = (body.category ?? '').toLowerCase()
+      const isBottom = /pant|denim|jean|trouser|chino|short/.test(cat)
+      if (isBottom && profile.preferred_numeric_size) {
+        body = { ...body, sizing: profile.preferred_numeric_size, sizing_type: 'numeric' }
+      } else if (!isBottom && profile.preferred_alpha_size) {
+        body = { ...body, sizing: profile.preferred_alpha_size, sizing_type: 'alpha' }
+      }
+    }
+  }
 
   const item = await dbUpsertItem(userId, body)
   return NextResponse.json({ item }, { status: 200 })
