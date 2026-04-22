@@ -5,3 +5,6 @@
   node_modules/
 node_modules
 testing/fixtures/
+retailers/
+supabase/
+.DS_Store

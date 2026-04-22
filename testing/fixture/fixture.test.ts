@@ -34,9 +34,11 @@ import { extractWithRegistry } from "../../src/registry/index.js";
 import type { ExtractionResult } from "../../src/types/index.js";
 
 const FIXTURES_DIR = resolve("testing/fixtures");
-const BRANDS = readdirSync(FIXTURES_DIR, { withFileTypes: true })
-  .filter((d) => d.isDirectory())
-  .map((d) => d.name);
+const BRANDS = existsSync(FIXTURES_DIR)
+  ? readdirSync(FIXTURES_DIR, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+  : [];
 
 // Gate thresholds
 const REQUIRED_FIELD_THRESHOLD = 0.9; // 90%
