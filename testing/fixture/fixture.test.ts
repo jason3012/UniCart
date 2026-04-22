@@ -174,6 +174,12 @@ function runFixture(
 // Tests
 // ---------------------------------------------------------------------------
 
+if (BRANDS.length === 0) {
+  describe('fixture tests', () => {
+    it.skip('no fixtures directory — add to testing/fixtures/<brand>/<name>/', () => {})
+  })
+}
+
 for (const brand of BRANDS) {
   describe(`${brand} fixtures`, () => {
     const fixtures = loadFixtures(brand);
